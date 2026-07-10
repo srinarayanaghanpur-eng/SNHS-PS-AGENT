@@ -1,0 +1,18 @@
+{
+  "manifestVersion": 5,
+  "id": "com.snhs.smart-poster-agent",
+  "name": "SNHS SMART POSTER AGENT",
+  "version": "1.0.0",
+  "main": "index.html",
+  "host": [{ "app": "PS", "minVersion": "24.2.0" }],
+  "requiredPermissions": { "localFileSystem": "request" },
+  "entrypoints": [{
+    "type": "panel",
+    "id": "snhsSmartPosterPanel",
+    "label": { "default": "SNHS Smart Poster Agent" },
+    "minimumSize": { "width": 320, "height": 420 },
+    "maximumSize": { "width": 1600, "height": 1600 },
+    "preferredDockedSize": { "width": 380, "height": 720 },
+    "preferredFloatingSize": { "width": 520, "height": 760 }
+  }]
+}

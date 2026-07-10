@@ -1,0 +1,10 @@
+const ps=require('photoshop');
+export async function batch(descriptors:any[],options:any={}){return ps.action.batchPlay(descriptors,{synchronousExecution:false,...options})}
+export async function selectLayer(layerId:number){await batch([{_obj:'select',_target:[{_ref:'layer',_id:layerId}],makeVisible:false,_options:{dialogOptions:'dontDisplay'}}])}
+export async function layerDetails(documentId:number,layerId:number):Promise<any>{
+  const [r]=await batch([{_obj:'multiGet',_target:{_ref:[{_ref:'layer',_id:layerId},{_ref:'document',_id:documentId}]},extendedReference:[['smartObject','hasUserMask','hasVectorMask','hasFilterMask','textKey','group','layerEffects']],options:{failOnMissingProperty:false,failOnMissingElement:false}}]);
+  return r?.list?.[0]??r??{};
+}
+export async function translateAndScale(layerId:number,dx:number,dy:number,scale=1){await selectLayer(layerId);await batch([{_obj:'transform',_target:[{_ref:'layer',_enum:'ordinal',_value:'targetEnum'}],freeTransformCenterState:{_enum:'quadCenterState',_value:'QCSAverage'},offset:{_obj:'offset',horizontal:{_unit:'pixelsUnit',_value:dx},vertical:{_unit:'pixelsUnit',_value:dy}},width:{_unit:'percentUnit',_value:scale*100},height:{_unit:'percentUnit',_value:scale*100},_options:{dialogOptions:'dontDisplay'}}])}
+export async function replaceSmartObject(layerId:number,file:any){const fs=require('uxp').storage.localFileSystem;const token=fs.createSessionToken(file);await selectLayer(layerId);await batch([{_obj:'placedLayerReplaceContents',_target:[{_ref:'layer',_enum:'ordinal',_value:'targetEnum'}],null:{_path:token,_kind:'local'},_options:{dialogOptions:'dontDisplay'}}])}
+export async function placeEmbedded(file:any){const fs=require('uxp').storage.localFileSystem;const token=fs.createSessionToken(file);await batch([{_obj:'placeEvent',null:{_path:token,_kind:'local'},freeTransformCenterState:{_enum:'quadCenterState',_value:'QCSAverage'},_options:{dialogOptions:'dontDisplay'}}]);return ps.app.activeDocument.activeLayers[0]}

@@ -1,0 +1,2 @@
+import type{ClassifiedLayer,LayerSnapshot}from'../types';import{fnv1a,stableStringify}from'../utils/hash';
+export function templateFingerprint(filename:string,width:number,height:number,layers:(LayerSnapshot|ClassifiedLayer)[]){return fnv1a(stableStringify({filename:filename.toLowerCase(),width:Math.round(width),height:Math.round(height),layers:layers.map(l=>({p:l.path,t:l.type,c:l.childIds.length,b:[Math.round(l.bounds.left),Math.round(l.bounds.top),Math.round(l.bounds.width),Math.round(l.bounds.height)]}))}))}

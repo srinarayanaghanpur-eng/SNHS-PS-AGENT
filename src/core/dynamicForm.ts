@@ -1,0 +1,4 @@
+import type{SemanticRole,TemplateManifest}from'../types';
+export interface FormField{role:SemanticRole;label:string;kind:'text'|'textarea'|'date'|'image';required:boolean;repeatable:boolean}
+const image=new Set<SemanticRole>(['school_logo','student_photo','birthday_photo','achievement_photo','teacher_photo','chairman_photo','principal_photo','event_image']);
+export function fieldsForManifest(m:TemplateManifest):FormField[]{const roles=[...new Set(m.layers.filter(l=>l.semanticRole!=='unknown'&&!['background','decorative_element','icon','optional_section','repeated_student_card'].includes(l.semanticRole)).map(l=>l.semanticRole))];return roles.map(role=>({role,label:role.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),kind:image.has(role)?'image':role.includes('description')?'textarea':role.includes('date')?'date':'text',required:['poster_title','event_name','student_name'].includes(role),repeatable:role.startsWith('student_')}))}
