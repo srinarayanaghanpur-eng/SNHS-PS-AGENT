@@ -1,4 +1,10 @@
 node_modules/
 dist/
+dist-server/
+electron/main.js
+electron/main.js.map
+electron/preload.js
+electron/preload.js.map
 coverage/
+release/
 *.log

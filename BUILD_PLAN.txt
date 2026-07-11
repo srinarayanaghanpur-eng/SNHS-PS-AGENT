@@ -1,0 +1,289 @@
+﻿================================================================
+ SNHS SMART POSTER AGENT — BUILD PLAN
+ Fix Poster-Generation & Layout Engine
+================================================================
+
+Current project path: C:\Users\HP\Desktop\SNHS PS AGENT
+Build tool: npm run build (esbuild via scripts/build.mjs)
+Type check: npm run typecheck (tsc --noEmit)
+Tests: npm test (vitest)
+
+================================================================
+ PHASE 1: DATA MODEL EXTENSIONS
+================================================================
+
+Files to modify:
+  src/types/index.ts
+
+Changes:
+  - Add LayoutRegion { x, y, width, height }
+  - Add LayoutSection ('header' | 'content' | 'footer')
+  - Add SectionInfo { region, section }
+  - Add TextRegion { x, y, width, height, maxLines, minFontSize, maxFontSize, alignment }
+  - Add SafeArea { left, top, right, bottom, width, height }
+  - Add LayoutIssue { code, severity, message, layerId?, section? }
+  - Add AutoFix { description, target, success }
+  - Add LayoutValidationResult { valid, score, issues, fixesApplied, criticalIssueCount }
+  - Update GenerationResult to include layoutValidation: LayoutValidationResult
+
+Verification: npm run typecheck
+
+================================================================
+ PHASE 2: PSD-SIZE-AWARE LAYOUT ENGINE
+================================================================
+
+Files to rewrite:
+  src/layout/safeAreaCalculator.ts
+
+New files to create:
+  src/layout/sectionLayoutEngine.ts
+
+safeAreaCalculator.ts exports:
+  percentageToPixels(percent, dimension)
+  calculateSafeArea(docW, docH)
+  calculateHeaderRegion(docW, docH)
+  calculateContentRegion(docW, docH)
+  calculateFooterRegion(docW, docH)
+  moveLayerInsideRegion(document, layerId, region)
+  resizeLayerToFitRegion(document, layerId, region, options)
+  centerLayerInRegion(document, layerId, region)
+  getSectionForRole(role)
+
+sectionLayoutEngine.ts exports:
+  applySectionLayout(document, docW, docH, manifestLayers)
+
+Verification: npm run typecheck && npm test
+
+================================================================
+ PHASE 3: TEXT FITTING ENGINE
+================================================================
+
+New files to create:
+  src/layout/textFitEngine.ts
+
+Files to modify:
+  src/photoshop/textReplacement.ts
+
+textFitEngine.ts exports:
+  fitTextToRegion(document, layer, text, region: TextRegion)
+    Steps:
+      1. Set text content
+      2. Refresh Photoshop (read actual bounds)
+      3. If width overflows -> reduce font 1pt -> retry
+      4. If height > maxLines -> reduce font -> retry
+      5. If still overflow at minFontSize -> convert to paragraph text
+         with bounded region, retry
+      6. Adjust leading to font_size * 1.2
+      7. Reposition inside region after resize
+      8. Preserve alignment
+      9. Return { success, finalSize, lineCount, overflow }
+
+  readActualBounds(document, layerId)
+  convertToParagraphText(document, layer, region)
+
+TextRegion presets per role:
+  HEADLINE:    maxLines=2, minFontSize=18, maxFontSize=120, center
+  SUBHEADLINE: maxLines=2, minFontSize=12, maxFontSize=48,  center
+  FEATURES:    maxLines=3, minFontSize=10, maxFontSize=36,  left
+  ADDRESS:     maxLines=2, minFontSize=8,  maxFontSize=24,  center
+  FOOTER:      maxLines=2, minFontSize=8,  maxFontSize=20,  center
+  DATE:        maxLines=1, minFontSize=10, maxFontSize=36,  center
+  PHONE:       maxLines=1, minFontSize=8,  maxFontSize=20,  center
+  SCHOOL_NAME: maxLines=1, minFontSize=12, maxFontSize=48,  left
+  ACADEMIC_YEAR:maxLines=1, minFontSize=10, maxFontSize=24, center
+
+textReplacement.ts changes:
+  - Delegate to fitTextToRegion()
+  - Determine TextRegion from semanticRole
+  - Preserve font, color, styles
+  - Log font-size changes
+
+Verification: npm run typecheck
+
+================================================================
+ PHASE 4: IMAGE FITTING ENGINE
+================================================================
+
+New files to create:
+  src/photoshop/imageFitManager.ts
+
+Files to modify:
+  src/photoshop/imageReplacement.ts
+
+imageFitManager.ts exports:
+  fitImageToRegion(document, layer, fileRef, region, options)
+    Steps:
+      1. Replace Smart Object or place embedded
+      2. Read actual placed bounds
+      3. Cover-style fit: scale = max(regionW/w, regionH/h)
+      4. Clamp to max 40% of doc width/height for main photo
+      5. Preserve masks, borders, effects, aspect ratio
+      6. Center inside mask/frame
+
+Verification: npm run typecheck
+
+================================================================
+ PHASE 5: COLLISION DETECTION
+================================================================
+
+Files to rewrite:
+  src/layout/collisionDetector.ts
+
+Exports:
+  detectLayoutCollisions(layers, docW, docH) -> LayoutIssue[]
+
+  Checks:
+    - Headline over school_name / powered_by_lead
+    - Text over text (same section)
+    - Footer text over portrait
+    - Photo over text
+    - Content outside safe area
+    - Address outside footer
+    - Content outside canvas
+
+  Ignored: clipping masks, frames, shadows, card internals
+
+Verification: npm run typecheck && npm test
+
+================================================================
+ PHASE 6: SPACING ENGINE
+================================================================
+
+New files to create:
+  src/layout/spacingEngine.ts
+
+Exports:
+  applySpacing(document, docW, docH, layers)
+    Minimum spacing:
+      logo->name: 1.5% width     branding->headline: 2% height
+      headline->content: 2% h    image->text: 3% width
+      footer items: 1.5% width   canvas edge: safe-area margin
+
+Verification: npm run typecheck
+
+================================================================
+ PHASE 7: LAYOUT VALIDATOR
+================================================================
+
+New files to create:
+  src/layout/layoutValidator.ts
+
+Exports:
+  validatePosterLayout(docW, docH, layers, manifest, data) -> LayoutValidationResult
+
+  Checks: visible required, inside canvas, inside safe area,
+          no text clipped, no text exceeds region, no missing content,
+          no unused placeholder, no duplicate, no critical collision,
+          no image distorted, font-size respected
+
+  Scoring: 100 - warnings(5) - errors(15) - critical(25)
+
+Verification: npm run typecheck
+
+================================================================
+ PHASE 8: AUTOMATIC REPAIR ENGINE
+================================================================
+
+New files to create:
+  src/layout/automaticRepairEngine.ts
+  src/layout/layerBoundsReader.ts
+
+Files to modify:
+  src/photoshop/layerVisibility.ts  (expand with smartHidePlaceholders)
+
+automaticRepairEngine.ts:
+  applyAutomaticLayoutFixes(doc, docW, docH, issues, layers, data)
+    -> { fixes: AutoFix[], remaining: LayoutIssue[] }
+
+  Fixes: reduce font, wrap, reposition, hide duplicate,
+         hide empty, scale photo, hide profile group, increase spacing
+
+layerBoundsReader.ts:
+  readLayerBounds(document, layerId)
+  refreshAllBounds(document, manifestLayers)
+
+layerVisibility.ts (expand):
+  smartHidePlaceholders(document, manifestLayers, data)
+
+Verification: npm run typecheck
+
+================================================================
+ PHASE 9: POST-GENERATION PIPELINE (REWRITE)
+================================================================
+
+Files to rewrite:
+  src/core/posterGenerator.ts
+
+New pipeline (pseudocode):
+  duplicate doc
+  for attempt = 0..4:
+    replaceText/image for each primary layer
+    smartHidePlaceholders
+    applySectionLayout
+    applySpacing
+    refreshAllBounds
+    validatePosterLayout
+    if valid && criticalIssueCount === 0 -> break
+    applyAutomaticLayoutFixes
+  export only if valid && criticalIssueCount === 0
+
+  Duplicate text fix: filter to primary layer per non-repeatable role
+
+Verification: npm run typecheck
+
+================================================================
+ PHASE 10: UI UPDATES
+================================================================
+
+Files to modify:
+  src/ui/App.tsx
+  src/ui/screens/Screens.tsx
+  src/ui/styles.css
+
+App.tsx: add layoutValidation state, repair handler, new screen nav
+Screens.tsx Preview: quality badge, issue list, fix list, action buttons
+Screens.tsx Generate: generation log, repair count, block reason
+styles.css: quality badge colors, issue severity, fix styles
+
+Verification: npm run build
+
+================================================================
+ PHASE 11: TESTS
+================================================================
+
+New test files:
+  tests/textFitEngine.test.ts
+  tests/sectionLayout.test.ts
+  tests/layoutValidator.test.ts
+  tests/collisionDetector.test.ts
+
+Modify:
+  tests/layout.test.ts - update signatures
+  tests/quality.test.ts - add new validator tests
+
+Verification: npm test
+
+================================================================
+ BUILD & DEPLOY
+================================================================
+
+1. npm run typecheck
+2. npm test
+3. npm run build
+4. Load dist/ in UXP Developer Tool
+5. Test with actual PSD templates
+
+Expected results:
+  - Headline never overflows canvas
+  - Text wraps and resizes correctly
+  - No duplicated text
+  - Empty placeholders hidden
+  - Photo balanced inside content region
+  - Profile block complete (or hidden if no data)
+  - No blank white rectangles
+  - Export blocked when layout is broken
+  - Layout scales proportionally for different PSD sizes
+
+================================================================
+ END OF BUILD PLAN
+================================================================

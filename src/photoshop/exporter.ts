@@ -1,5 +1,43 @@
-import type{ExportFormat}from'../types';import{batch}from'./batchPlayHelpers';
-const sizes:Partial<Record<ExportFormat,[number,number]>>={square:[1080,1080],portrait:[1080,1350],display:[1920,1080],a4:[2480,3508]};
-const ext=(f:ExportFormat)=>f==='jpeg'?'.jpg':f==='psd'?'.psd':'.png';
-async function makeSizedCopy(document:any,format:ExportFormat){const target=sizes[format];if(!target)return document;const copy=await document.duplicate(`${document.name}_${format}`,false);const[w,h]=target;const scale=Math.min(w/Number(copy.width),h/Number(copy.height));await batch([{_obj:'imageSize',_target:[{_ref:'document',_id:Number(copy.id)}],width:{_unit:'pixelsUnit',_value:Math.round(Number(copy.width)*scale)},height:{_unit:'pixelsUnit',_value:Math.round(Number(copy.height)*scale)},resolution:{_unit:'densityUnit',_value:format==='a4'?300:Number(copy.resolution)},interfaceIconFrameDimmed:{_enum:'interpolationType',_value:'bicubicAutomatic'},_options:{dialogOptions:'dontDisplay'}},{_obj:'canvasSize',_target:[{_ref:'document',_id:Number(copy.id)}],width:{_unit:'pixelsUnit',_value:w},height:{_unit:'pixelsUnit',_value:h},horizontal:{_enum:'horizontalLocation',_value:'center'},vertical:{_enum:'verticalLocation',_value:'center'},_options:{dialogOptions:'dontDisplay'}}]);return copy}
-export async function exportDocument(document:any,folder:any,base:string,formats:ExportFormat[]){const ps=require('photoshop');const names:string[]=[];for(const format of formats){const exportDoc=await makeSizedCopy(document,format);const name=`${base}_${format}${ext(format)}`;const file=await folder.createFile(name,{overwrite:true});if(format==='jpeg')await exportDoc.saveAs.jpg(file,{quality:11},true);else if(format==='psd')await exportDoc.saveAs.psd(file,{embedColorProfile:true},true);else await exportDoc.saveAs.png(file,{compression:6},true);names.push(name);if(exportDoc!==document)await exportDoc.close(ps.constants.SaveOptions.DONOTSAVECHANGES)}return names}
+import type { ExportFormat } from '../types';
+import { log } from '../utils/logger';
+import { psRunJsx, psSavePng, psSaveJpeg, psSavePsd } from '../bridge/apiClient';
+import { generateJsx } from '../utils/jsxBuilder';
+
+const sizes: Partial<Record<ExportFormat, [number, number]>> = {
+  square: [1080, 1080],
+  portrait: [1080, 1350],
+  display: [1920, 1080],
+  a4: [2480, 3508]
+};
+
+const ext = (f: ExportFormat) => f === 'jpeg' ? '.jpg' : f === 'psd' ? '.psd' : f === 'pdf' ? '.pdf' : '.png';
+
+async function makeSizedCopy(docId: number, exportDir: string, format: ExportFormat, base: string): Promise<number> {
+  const target = sizes[format];
+  if (!target) return docId;
+  const result = await psRunJsx(generateJsx.makeSizedCopy(docId, format, target));
+  const idMatch = result.stdout?.match(/DOC_ID:(\d+)/);
+  return idMatch ? Number(idMatch[1]) : docId;
+}
+
+export async function exportDocument(docId: number, exportDir: string, base: string, formats: ExportFormat[]): Promise<string[]> {
+  const names: string[] = [];
+  for (const format of formats) {
+    try {
+      const exportDocId = await makeSizedCopy(docId, exportDir, format, base);
+      const name = `${base}_${format}${ext(format)}`;
+      const filePath = `${exportDir}/${name}`;
+      if (format === 'psd') await psSavePsd(filePath, exportDocId);
+      else if (format === 'jpeg') await psSaveJpeg(filePath, 11, exportDocId);
+      else if (format === 'pdf') await psSavePng(filePath.replace(/\.pdf$/, '.png'), exportDocId);
+      else await psSavePng(filePath, exportDocId);
+      names.push(name);
+      if (exportDocId !== docId) {
+        await psRunJsx(generateJsx.closeDocument(exportDocId));
+      }
+    } catch (err) {
+      log('warn', 'exportDocument', `format ${format} failed: ${String(err)} — continuing with remaining formats`);
+    }
+  }
+  return names;
+}

@@ -1,10 +1,29 @@
-const ps=require('photoshop');
-export async function batch(descriptors:any[],options:any={}){return ps.action.batchPlay(descriptors,{synchronousExecution:false,...options})}
-export async function selectLayer(layerId:number){await batch([{_obj:'select',_target:[{_ref:'layer',_id:layerId}],makeVisible:false,_options:{dialogOptions:'dontDisplay'}}])}
-export async function layerDetails(documentId:number,layerId:number):Promise<any>{
-  const [r]=await batch([{_obj:'multiGet',_target:{_ref:[{_ref:'layer',_id:layerId},{_ref:'document',_id:documentId}]},extendedReference:[['smartObject','hasUserMask','hasVectorMask','hasFilterMask','textKey','group','layerEffects']],options:{failOnMissingProperty:false,failOnMissingElement:false}}]);
-  return r?.list?.[0]??r??{};
+import { psRunJsx, psReadLayers } from '../bridge/apiClient';
+import { generateJsx } from '../utils/jsxBuilder';
+
+export async function batch(descriptors: any[], _options: any = {}): Promise<any> {
+  return psRunJsx(JSON.stringify(descriptors));
 }
-export async function translateAndScale(layerId:number,dx:number,dy:number,scale=1){await selectLayer(layerId);await batch([{_obj:'transform',_target:[{_ref:'layer',_enum:'ordinal',_value:'targetEnum'}],freeTransformCenterState:{_enum:'quadCenterState',_value:'QCSAverage'},offset:{_obj:'offset',horizontal:{_unit:'pixelsUnit',_value:dx},vertical:{_unit:'pixelsUnit',_value:dy}},width:{_unit:'percentUnit',_value:scale*100},height:{_unit:'percentUnit',_value:scale*100},_options:{dialogOptions:'dontDisplay'}}])}
-export async function replaceSmartObject(layerId:number,file:any){const fs=require('uxp').storage.localFileSystem;const token=fs.createSessionToken(file);await selectLayer(layerId);await batch([{_obj:'placedLayerReplaceContents',_target:[{_ref:'layer',_enum:'ordinal',_value:'targetEnum'}],null:{_path:token,_kind:'local'},_options:{dialogOptions:'dontDisplay'}}])}
-export async function placeEmbedded(file:any){const fs=require('uxp').storage.localFileSystem;const token=fs.createSessionToken(file);await batch([{_obj:'placeEvent',null:{_path:token,_kind:'local'},freeTransformCenterState:{_enum:'quadCenterState',_value:'QCSAverage'},_options:{dialogOptions:'dontDisplay'}}]);return ps.app.activeDocument.activeLayers[0]}
+
+export async function selectLayer(layerId: number): Promise<void> {
+  await psRunJsx(generateJsx.selectLayer(layerId));
+}
+
+export async function layerDetails(documentId: number, layerId: number): Promise<any> {
+  const data = await psReadLayers(documentId);
+  return data.layers?.find((l: any) => l.id === layerId) || {};
+}
+
+export async function translateAndScale(layerId: number, dx: number, dy: number, scale = 1): Promise<void> {
+  await psRunJsx(generateJsx.translateAndScale(layerId, dx, dy, scale));
+}
+
+export async function replaceSmartObject(layerId: number, filePath: string): Promise<void> {
+  await psRunJsx(generateJsx.replaceSmartObject(layerId, filePath));
+}
+
+export async function placeEmbedded(filePath: string): Promise<any> {
+  const result = await psRunJsx(generateJsx.placeEmbedded(filePath));
+  const idMatch = result.stdout?.match(/LAYER_ID:(\d+)/);
+  return { id: idMatch ? Number(idMatch[1]) : -1 };
+}

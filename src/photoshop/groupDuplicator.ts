@@ -1,2 +1,48 @@
-import type{ClassifiedLayer,StudentRecord,OperationWarning}from'../types';import{cardLayout}from'../layout/cardLayoutEngine';import{safeArea}from'../layout/safeAreaCalculator';import{findLayer,descendants}from'./layerLookup';import{translateAndScale}from'./batchPlayHelpers';
-export async function arrangeStudentCards(document:any,manifestLayers:ClassifiedLayer[],students:StudentRecord[]):Promise<{groups:any[];warnings:OperationWarning[]}>{const warnings:OperationWarning[]=[];const cards=manifestLayers.filter(l=>l.semanticRole==='repeated_student_card');if(!cards.length||!students.length)return{groups:[],warnings};const base=cards[0]!;const original=findLayer(document,base.layerId);if(!original)return{groups:[],warnings:[{operation:'Student cards',message:'Repeated card group is missing.',solution:'Re-analyze the PSD.'}]};const groups:any[]=[original];while(groups.length<students.length)groups.push(await original.duplicate());cards.forEach((m,i)=>{if(i>=students.length){const g=findLayer(document,m.layerId);if(g)g.visible=false}});const area=safeArea(Number(document.width),Number(document.height),manifestLayers);const placements=cardLayout(students.length,area,base.bounds.width,base.bounds.height);for(let i=0;i<groups.length;i++){const g=groups[i],p=placements[i]!;g.visible=true;const b=g.boundsNoEffects??g.bounds;await translateAndScale(Number(g.id),p.left-Number(b.left),p.top-Number(b.top),p.scale);const children=descendants(g);const name=children.find(l=>/student name|\[SNHS:student_name]/i.test(l.name));const cls=children.find(l=>/class|\[SNHS:student_class]/i.test(l.name));if(name?.textItem)name.textItem.contents=students[i]!.name;if(cls?.textItem)cls.textItem.contents=students[i]!.className}return{groups,warnings}}
+import type { ClassifiedLayer, StudentRecord, OperationWarning } from '../types';
+import { cardLayout } from '../layout/cardLayoutEngine';
+import { safeArea } from '../layout/safeAreaCalculator';
+import { psRunJsx, psReadLayers } from '../bridge/apiClient';
+import { generateJsx } from '../utils/jsxBuilder';
+import { log } from '../utils/logger';
+
+export async function arrangeStudentCards(
+  docId: number,
+  manifestLayers: ClassifiedLayer[],
+  students: StudentRecord[]
+): Promise<{ groups: number[]; warnings: OperationWarning[] }> {
+  const warnings: OperationWarning[] = [];
+  const cards = manifestLayers.filter(l => l.semanticRole === 'repeated_student_card');
+  if (!cards.length || !students.length) return { groups: [], warnings };
+
+  const base = cards[0]!;
+  const layerInfo = await psReadLayers(docId);
+  const original = layerInfo.layers?.find((l: any) => l.id === base.layerId);
+  if (!original) return { groups: [], warnings: [{ operation: 'Student cards', message: 'Repeated card group is missing.', solution: 'Re-analyze the PSD.' }] };
+
+  const groups: number[] = [base.layerId];
+  for (let i = 1; i < students.length; i++) {
+    const result = await psRunJsx(generateJsx.duplicateLayer(base.layerId));
+    const idMatch = result.stdout?.match(/LAYER_ID:(\d+)/);
+    if (idMatch) groups.push(Number(idMatch[1]));
+  }
+
+  for (let i = cards.length - 1; i >= students.length; i--) {
+    const c = cards[i];
+    if (c) await psRunJsx(generateJsx.setLayerVisibility(c.layerId, false));
+  }
+
+  const docInfo = layerInfo as any;
+  const area = safeArea(Number(docInfo.width) || 1920, Number(docInfo.height) || 1080, manifestLayers);
+  const w = Number(original.width) || 200;
+  const h = Number(original.height) || 200;
+  const placements = cardLayout(students.length, area, base.bounds?.width || w, base.bounds?.height || h);
+
+  for (let i = 0; i < groups.length; i++) {
+    const p = placements[i];
+    if (!p) continue;
+    await psRunJsx(generateJsx.setLayerVisibility(groups[i], true));
+    await psRunJsx(generateJsx.translateAndScale(groups[i], p.left, p.top, p.scale));
+  }
+
+  return { groups, warnings };
+}

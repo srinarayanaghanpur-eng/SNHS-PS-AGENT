@@ -1,3 +1,25 @@
-import type{ClassifiedLayer,FileRef,OperationWarning}from'../types';import{findLayer}from'./layerLookup';import{placeEmbedded,replaceSmartObject,translateAndScale}from'./batchPlayHelpers';
-export async function replaceImage(document:any,meta:ClassifiedLayer,file:FileRef):Promise<OperationWarning|undefined>{const target=findLayer(document,meta.layerId);if(!target)return{operation:'Replace image',message:`Missing layer ${meta.path}.`,solution:'Re-analyze the PSD.',layerId:meta.layerId};try{if(meta.smartObject||meta.type==='smartObject'){await replaceSmartObject(meta.layerId,file.entry);return}const placed=await placeEmbedded(file.entry);placed.name=`SNHS ${file.name}`;const b=placed.boundsNoEffects??placed.bounds;const scale=Math.max(meta.bounds.width/Math.max(1,Number(b.width)),meta.bounds.height/Math.max(1,Number(b.height)));const scaledW=Number(b.width)*scale,scaledH=Number(b.height)*scale;const dx=meta.bounds.left+(meta.bounds.width-scaledW)/2-Number(b.left);const dy=meta.bounds.top+(meta.bounds.height-scaledH)/2-Number(b.top);await translateAndScale(Number(placed.id),dx,dy,scale);placed.isClippingMask=true;target.visible=true;return}catch(e){return{operation:'Replace image',message:String(e),solution:'Use PNG, JPEG, or WebP; unlock the placeholder and verify Smart Object contents.',layerId:meta.layerId}}
+import type { ClassifiedLayer } from '../types';
+import { psRunJsx, psReadLayers } from '../bridge/apiClient';
+import { generateJsx } from '../utils/jsxBuilder';
+import { log } from '../utils/logger';
+
+export async function replaceImage(
+  docId: number,
+  meta: ClassifiedLayer,
+  imagePath: string,
+): Promise<void> {
+  try {
+    if (meta.smartObject || meta.type === 'smartObject') {
+      await psRunJsx(generateJsx.replaceSmartObject(meta.layerId, imagePath));
+    } else {
+      const result = await psRunJsx(generateJsx.placeEmbedded(imagePath));
+      const idMatch = result.stdout?.match(/LAYER_ID:(\d+)/);
+      if (idMatch) {
+        await psRunJsx(generateJsx.renameLayer(Number(idMatch[1]), 'SNHS ' + (meta.path || 'Image')));
+      }
+    }
+    log('info', 'replaceImage', `Replaced layer ${meta.layerId} with ${imagePath}`);
+  } catch (e: any) {
+    log('error', 'replaceImage', `Failed: ${e.message}`);
+  }
 }

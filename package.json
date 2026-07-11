@@ -1,24 +1,74 @@
 {
-  "name": "snhs-smart-poster-agent-uxp",
+  "name": "snhs-smart-poster-agent",
   "version": "1.0.0",
   "private": true,
-  "description": "Intelligent non-destructive poster automation for Adobe Photoshop UXP",
+  "description": "Intelligent non-destructive poster automation for Adobe Photoshop (ExtendScript + COM + VBS)",
+  "main": "electron/main.js",
   "scripts": {
-    "clean": "node scripts/build.mjs --clean",
-    "build": "node scripts/build.mjs",
-    "dev": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "clean": "node scripts/build.mjs --clean",
+    "desktop:compile": "node scripts/build.mjs --electron",
+    "desktop:dev": "node scripts/build.mjs && node scripts/build.mjs --electron && npx electron electron/main.js",
+    "desktop:build": "node scripts/build.mjs && node scripts/build.mjs --electron",
+    "desktop:package": "npm run desktop:build && npx electron-builder --win --x64",
+    "desktop:installer": "npm run desktop:package"
+  },
+  "build": {
+    "appId": "com.snhs.poster-agent",
+    "productName": "SNHS Poster Agent",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "backend/**/*",
+      "scripts/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "SNHS Poster Agent"
+    }
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "concurrently": "^10.0.3",
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.21.5",
+    "tsx": "^4.23.0",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5"
+    "vitest": "^2.0.5",
+    "wait-on": "^9.0.10"
   }
 }
