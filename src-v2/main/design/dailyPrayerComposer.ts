@@ -95,13 +95,13 @@ export function composeDailyPrayer(input: ComposeInput): Plan {
   }
   background.nodes.push({
     kind: 'gradient', name: 'ACADEMIC_NAVY_BACKGROUND', rect: r(0, 0, 1080, 1350),
-    stops: [{ hex: primary, position: 0 }, { hex: secondary, position: 100 }], angle: 90,
+    stops: [{ hex: primary, position: 0 }, { hex: secondary, position: 100 }], angle: input.variationSeed % 2 ? 72 : 90,
     opacity: input.assets?.background ? 90 : 100,
   });
 
   decorations.nodes.push({ kind: 'rect', name: 'TOP_GOLD_RULE', rect: r(0, 0, 1080, 11), hex: accent });
   decorations.nodes.push({ kind: 'ellipse', name: 'ACADEMIC_HALO', rect: r(175, 14, 730, 315), hex: white, opacity: 7 });
-  decorations.nodes.push({ kind: 'ellipse', name: 'DECORATIVE_ORBIT', rect: r(824, 356, 280, 280), hex: accent, opacity: 9 });
+  decorations.nodes.push({ kind: 'ellipse', name: 'DECORATIVE_ORBIT', rect: r(input.variationSeed % 2 ? 760 : 824, 356, 280, 280), hex: accent, opacity: 9 });
   decorations.nodes.push({ kind: 'rect', name: 'LEFT_ACCENT', rect: r(58, 98, 5, 1110), hex: accent, opacity: 82 });
   for (let i = 0; i < 5; i += 1) {
     decorations.nodes.push({ kind: 'ellipse', name: `ACADEMIC_DOT_${i + 1}`, rect: r(938 + i * 17, 394, 6, 6), hex: accent, opacity: 55 });
@@ -205,7 +205,9 @@ export function composeDailyPrayer(input: ComposeInput): Plan {
   const thought = input.prayer?.thought?.trim();
   const mainMessage = input.message?.trim();
   const announcements = [input.prayer?.examInfo?.trim(), input.prayer?.festivalInfo?.trim()].filter(Boolean).join('  •  ');
+  const birthdayNames = input.prayer?.birthdays?.map((birthday) => birthday.className ? `${birthday.name} (${birthday.className})` : birthday.name).join(' · ');
   const cards = [
+    birthdayNames ? { label: 'BIRTHDAY WISHES', body: birthdayNames, accent: orange } : null,
     prayerName ? { label: 'PRAYER', body: prayerName, accent: secondary } : null,
     thought ? { label: 'THOUGHT OF THE DAY', body: thought, accent } : null,
     mainMessage ? { label: 'MESSAGE', body: mainMessage, accent: orange } : null,

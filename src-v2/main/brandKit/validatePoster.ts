@@ -38,14 +38,10 @@ export async function validatePosterRequest(request: PosterRequest, profile: Sch
   );
   if (!hasPrayerContent) add('prayerContent', 'At least one piece of prayer content (thought, prayer, programme, news…) is required.');
 
-  // Main logo: if branding wants a logo, a valid one must exist (§9).
-  const showLogo = request.schoolOverride?.showLead ?? true; // logo always expected unless text-only
+  // Logos are optional. The generator validates any saved path and drops an
+  // unavailable optional asset so the layout rebalances without an empty frame.
   const logoAsset = profile?.assets.mainLogo;
-  if (profile && !logoAsset && !request.logoPath) {
-    add('mainLogo', 'School logo is enabled but no school logo has been uploaded. Upload a logo or switch to a text-only layout.');
-  } else if (logoAsset && !(await pathUsable(logoAsset.path))) {
-    add('mainLogo', `The school logo file is missing or unreadable: ${logoAsset.path}`);
-  }
+  if (logoAsset) await pathUsable(logoAsset.path);
 
   // LEAD logo, when LEAD branding is on.
   if ((request.schoolOverride?.showLead ?? profile?.branding.showLead) && profile?.assets.leadLogo && !(await pathUsable(profile.assets.leadLogo.path))) {
@@ -58,7 +54,7 @@ export async function validatePosterRequest(request: PosterRequest, profile: Sch
       const asset = person.assetKey ? profile?.assets[person.assetKey] : undefined;
       // §16/§17: stop and tell the operator exactly what to do — never substitute
       // an unrelated image when a required school asset is unavailable.
-      if (!asset) add(`${role}Photo`, `${role[0].toUpperCase() + role.slice(1)} photo is missing. Select it from Google Photos.`);
+      if (!asset) add(`${role}Photo`, `${role[0].toUpperCase() + role.slice(1)} photo is missing. Upload it from this poster page.`);
       else if (!(await pathUsable(asset.path))) add(`${role}Photo`, `The ${role} photo file is missing or unreadable: ${asset.path}`);
     }
   }
@@ -73,6 +69,5 @@ export async function validatePosterRequest(request: PosterRequest, profile: Sch
     add('outputFolder', `The output folder is not writable: ${request.outputFolder}`);
   }
 
-  void showLogo;
   return { ok: issues.length === 0, issues };
 }

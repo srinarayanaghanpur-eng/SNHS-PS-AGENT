@@ -27,6 +27,7 @@ export function DesignAssistantWindow() {
   const [docName, setDocName] = useState('—');
   const [activeLayer, setActiveLayer] = useState<string>('—');
   const [activeLayerId, setActiveLayerId] = useState<number | null>(null);
+  const [activeLayerDetails, setActiveLayerDetails] = useState<any | null>(null);
   const [detected, setDetected] = useState<{ layerId: number; role: string; confidence: number; name: string }[]>([]);
   const [liveApply, setLiveApply] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<any | null>(null);
@@ -37,6 +38,7 @@ export function DesignAssistantWindow() {
   const [issues, setIssues] = useState<any[]>([]);
   const [log, setLog] = useState<LogLine[]>([]);
   const [busy, setBusy] = useState(false);
+  const [lastResult, setLastResult] = useState('Ready for a command.');
 
   const addLog = useCallback((text: string, kind: LogLine['kind'] = 'info') => {
     setLog((l) => [{ time: new Date().toLocaleTimeString(), text, kind }, ...l].slice(0, 200));
@@ -52,6 +54,7 @@ export function DesignAssistantWindow() {
     const active = flat.find((x) => x.id === r.scene.activeLayerId);
     setActiveLayer(active ? active.name : '—');
     setActiveLayerId(r.scene.activeLayerId ?? null);
+    setActiveLayerDetails(active ?? null);
   }, [addLog]);
 
   useEffect(() => { void refreshState(); }, [refreshState]);
@@ -69,21 +72,26 @@ export function DesignAssistantWindow() {
   const handleOutcome = (r: any) => {
     switch (r.status) {
       case 'applied':
+        setLastResult('Command applied to the selected Photoshop layer.');
         addLog(`Applied: ${command}`, 'info');
         if (r.result?.previewPath) setPreview(`file://${r.result.previewPath}`);
         if (r.issues?.length) { setIssues(r.issues); r.issues.forEach((i: any) => addLog(`Check: ${i.message}`, i.severity === 'error' ? 'error' : 'warn')); }
         void refreshState();
         break;
       case 'needs_preview':
+        setLastResult('Preview ready. Review it before applying.');
         setPendingPlan(r.plan); addLog('Preview ready — review, then Apply.', 'info');
         break;
       case 'needs_confirmation':
+        setLastResult(r.warning ?? 'Confirmation required.');
         setPendingPlan(r.plan); setConfirmWarning(r.warning ?? 'Confirm this change?'); addLog(r.warning ?? 'Confirmation required', 'warn');
         break;
       case 'needs_selection':
+        setLastResult(r.message ?? 'Select a valid Photoshop layer.');
         setDetected(r.candidates ?? []); addLog(r.message ?? 'Select the intended layer.', 'warn');
         break;
       default:
+        setLastResult(r.message ?? 'Command failed.');
         addLog(r.message ?? 'Command failed', 'error');
     }
   };
@@ -142,9 +150,9 @@ export function DesignAssistantWindow() {
     ['Move left', 'move selected 20px left'], ['Move right', 'move selected 20px right'],
     ['Move up', 'move selected 20px up'], ['Move down', 'move selected 20px down'],
     ['Smaller', 'make this 10 percent smaller'], ['Larger', 'make this 10 percent larger'],
-    ['Centre', 'center this horizontally'], ['Darken bg', 'add dark overlay to background'],
-    ['Lighten bg', 'increase background brightness'], ['Hide', 'hide selected'],
-    ['Lock', 'lock selected'], ['Undo', '__undo'],
+    ['Centre horizontally', 'center this horizontally'], ['Centre vertically', 'center this vertically'],
+    ['Hide', 'hide selected'], ['Show', 'show selected'],
+    ['Lock', 'lock selected'], ['Unlock', 'unlock selected'],
   ];
 
   return (
@@ -154,25 +162,20 @@ export function DesignAssistantWindow() {
         <button onClick={() => api().assistantClose()}>Close</button>
       </div>
 
-      <div style={{ background: '#f2f5fa', borderRadius: 6, padding: 6 }}>
+      <div style={{ background: '#f2f5fa', borderRadius: 10, padding: 12, display: 'grid', gap: 5 }}>
         <div><b>Document:</b> {docName}</div>
         <div><b>Selected layer:</b> {activeLayer} {activeLayerId != null ? `(#${activeLayerId})` : ''}</div>
+        <div><b>Layer type:</b> {activeLayerDetails?.type ?? '—'}</div>
+        <div><b>Dimensions:</b> {activeLayerDetails ? `${Math.round(activeLayerDetails.width)} × ${Math.round(activeLayerDetails.height)} px` : '—'}</div>
+        <div><b>Position:</b> {activeLayerDetails ? `X ${Math.round(activeLayerDetails.x)}, Y ${Math.round(activeLayerDetails.y)}` : '—'}</div>
         <button onClick={refreshState} disabled={busy}>Use Selected Layer / Refresh</button>
       </div>
 
-      <div style={{ display: 'flex', gap: 4 }}>
-        {(['command', 'asset', 'background'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{ fontWeight: tab === t ? 700 : 400 }}>
-            {t === 'command' ? 'Command' : t === 'asset' ? 'Asset Search' : 'Background Search'}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'command' && (
+      {(
         <>
           <textarea value={command} onChange={(e) => setCommand(e.target.value)} placeholder="e.g. Move the school logo 30 pixels left" rows={2} />
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button onClick={send} disabled={busy}>Send command</button>
+            <button onClick={send} disabled={busy || activeLayerId == null}>Apply</button>
             <label><input type="checkbox" checked={liveApply} onChange={(e) => setLiveApply(e.target.checked)} /> Live Apply</label>
           </div>
 
@@ -180,7 +183,7 @@ export function DesignAssistantWindow() {
             <b>Quick edits</b>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
               {QUICK.map(([label, cmd]) => (
-                <button key={label} disabled={busy} onClick={() => cmd === '__undo' ? history('assistantUndo', 'Undo') : runQuick(cmd)}>{label}</button>
+                <button key={label} disabled={busy || activeLayerId == null} onClick={() => runQuick(cmd)}>{label}</button>
               ))}
             </div>
           </div>
@@ -199,8 +202,7 @@ export function DesignAssistantWindow() {
         </>
       )}
 
-      {tab === 'asset' && <AssetTab onSearch={search} candidates={candidates} onChoose={choose} busy={busy} label="Search assets (e.g. gold decorative corners)" />}
-      {tab === 'background' && <AssetTab onSearch={search} candidates={candidates} onChoose={choose} onChooseBackground={chooseAsBackground} busy={busy} label="Search backgrounds (e.g. premium blue education background)" />}
+      <div style={{ background: '#eef3f8', borderRadius: 8, padding: 9 }}><b>Command result</b><div>{lastResult}</div></div>
 
       {(pendingPlan || preview) && (
         <div style={{ background: '#eef6ee', borderRadius: 6, padding: 6 }}>

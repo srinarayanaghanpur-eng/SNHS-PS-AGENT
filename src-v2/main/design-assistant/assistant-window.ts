@@ -67,7 +67,7 @@ async function snapToPhotoshop(): Promise<void> {
 export function openAssistantWindow(preloadPath: string, indexHtml: string, iconPath: string): BrowserWindow {
   if (assistantWindow && !assistantWindow.isDestroyed()) { assistantWindow.focus(); return assistantWindow; }
   assistantWindow = new BrowserWindow({
-    width: 380, height: 900, minWidth: 320, minHeight: 520,
+    width: 560, height: 900, minWidth: 480, minHeight: 620,
     title: 'Design Assistant', alwaysOnTop: true, resizable: true, fullscreenable: false,
     minimizable: true, maximizable: false, skipTaskbar: false, icon: iconPath, show: false,
     webPreferences: { preload: preloadPath, contextIsolation: true, nodeIntegration: false, sandbox: true },

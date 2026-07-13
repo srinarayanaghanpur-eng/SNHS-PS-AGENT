@@ -1,21 +1,44 @@
-import { app } from 'electron';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve, sep } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
+import { getStorageManager, StorageManager } from './storage/storage-manager';
 
-export const folders = ['Brand', 'Templates', 'Assets', 'Reference Posters', 'Projects', 'Outputs', 'Jobs', 'Logs', 'Cache'] as const;
+export const folders = [
+  'Projects', 'Assets', 'Photoshop', 'Premiere', 'Word',
+  'AI Models', 'Database', 'Cache', 'Temp', 'Logs', 'Backups',
+  'Jobs', 'BrandKits', 'Config',
+] as const;
 
-export function baseFolder(): string { return join(app.getPath('documents'), 'SNHS Smart Poster Agent'); }
+let _mgr: StorageManager | null = null;
+
+export async function ensureStorage(): Promise<StorageManager> {
+  if (!_mgr) { _mgr = await getStorageManager(); }
+  return _mgr;
+}
+
+export function baseFolder(): string {
+  if (!_mgr) throw new Error('StorageManager not initialized. Call ensureStorage() during app startup.');
+  return _mgr.getStorageRoot();
+}
+
 export function containedPath(candidate: string): boolean {
-  const root = resolve(baseFolder()) + sep;
-  return resolve(candidate).startsWith(root);
+  if (!_mgr) throw new Error('StorageManager not initialized.');
+  return _mgr.containedPath(candidate);
 }
+
 export async function initializeStorage(): Promise<void> {
-  await Promise.all(folders.map((folder) => mkdir(join(baseFolder(), folder), { recursive: true })));
+  _mgr = await getStorageManager();
+  await _mgr.reinit();
 }
+
 export async function atomicJson(path: string, value: unknown): Promise<void> {
   if (!containedPath(path)) throw new Error('PATH_OUTSIDE_APP_STORAGE');
   await mkdir(dirname(path), { recursive: true });
   const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
   await writeFile(temporary, JSON.stringify(value, null, 2), 'utf8');
   await rename(temporary, path);
+}
+
+export function getStorageManagerInstance(): StorageManager {
+  if (!_mgr) throw new Error('StorageManager not initialized.');
+  return _mgr;
 }

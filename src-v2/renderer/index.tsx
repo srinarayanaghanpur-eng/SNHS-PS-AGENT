@@ -164,6 +164,111 @@ function PreviewPanel({ plan, result, zoom, setZoom, fullscreen, setFullscreen }
   </aside>;
 }
 
+function LayerTree({ layers }: { layers: any[] }) {
+  return <div className="layer-tree">{layers.map((layer) => <div key={layer.id} className="layer-branch">
+    {layer.children?.length ? <details open={layer.depth === 0}><summary>{layer.name} <span>{layer.type}</span></summary><LayerTree layers={layer.children} /></details> : <div className="layer-leaf" style={{ paddingLeft: `${12 + layer.depth * 14}px` }}>{layer.name}<span>{layer.type}</span></div>}
+  </div>)}</div>;
+}
+
+function PsdAnalysisPanel({ analysis }: { analysis: any }) {
+  const rows = useMemo(() => {
+    const flat: any[] = [];
+    const walk = (layers: any[]) => layers.forEach((layer) => { if (layer.type !== 'group' && (layer.probableRole !== 'unknown' || layer.type === 'text' || layer.smartObject || layer.type === 'pixel')) flat.push(layer); walk(layer.children || []); });
+    walk(analysis.layers); return flat;
+  }, [analysis]);
+  const [mapping, setMapping] = useState<Record<number, { role: string; use: boolean }>>(() => Object.fromEntries(rows.map((row) => [row.id, { role: row.probableRole, use: row.probableRole !== 'unknown' }])));
+  const [confirmed, setConfirmed] = useState(false);
+  const roles = ['unknown', 'schoolName', 'headerText', 'headline', 'subheadline', 'date', 'bodyText', 'logo', 'mainPhoto', 'supportingPhoto', 'photoPlaceholder', 'footer', 'background'];
+  return <div className="analysis-panel">
+    <div className="analysis-summary"><b>{analysis.document.name} · {analysis.document.width} × {analysis.document.height}</b><span>{analysis.layers.length} top-level layers · original PSD unchanged</span></div>
+    <h3>Layer tree</h3><LayerTree layers={analysis.layers} />
+    <h3>Role mapping</h3>
+    <div className="mapping-table"><div className="mapping-head"><b>Detected layer</b><b>Type</b><b>Proposed role</b><b>Confidence</b><b>Use</b></div>{rows.map((row) => {
+      const value = mapping[row.id] ?? { role: row.probableRole, use: false };
+      return <div className="mapping-row" key={row.id}><span>{row.name}</span><span>{row.type}</span><select value={value.role} onChange={(e) => { setConfirmed(false); setMapping({ ...mapping, [row.id]: { ...value, role: e.target.value } }); }}>{roles.map((role) => <option key={role}>{role}</option>)}</select><span>{row.confidence}%</span><label><input type="checkbox" checked={value.use} onChange={(e) => { setConfirmed(false); setMapping({ ...mapping, [row.id]: { ...value, use: e.target.checked } }); }} /> {value.use ? 'Use' : 'Ignore'}</label></div>;
+    })}</div>
+    <div className="button-row"><button className="primary" onClick={() => setConfirmed(true)}>Confirm mapping</button></div>
+    {confirmed && <div className="status success">Mapping confirmed for {Object.values(mapping).filter((item) => item.use).length} layers. The original PSD has not been modified.</div>}
+  </div>;
+}
+
+function SettingsPage({ base }: { base: string }) {
+  const [settings, setSettings] = useState<{ root: string; usage: any } | null>(null);
+  const [migrationInfo, setMigrationInfo] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const load = async () => setSettings(await window.posterApi.getStorageSettings());
+  useEffect(() => { load(); }, []);
+  const changeRoot = async () => {
+    const picked: any = await window.posterApi.chooseStorageRoot();
+    if (picked.canceled) return;
+    setBusy(true); setMsg('');
+    try {
+      const validation = await window.posterApi.validateStorageRoot(picked.path);
+      if (!validation.valid) { setMsg(`Invalid: ${validation.reasons?.join(', ') || validation.error}`); return; }
+      const plan = await window.posterApi.estimateMigration(picked.path);
+      setMigrationInfo({ ...plan, newRoot: picked.path });
+    } catch (e) { setMsg(String(e)); } finally { setBusy(false); }
+  };
+  const confirmMigration = async () => {
+    if (!migrationInfo) return;
+    setBusy(true); setMsg('');
+    try {
+      await window.posterApi.migrateStorage(migrationInfo.newRoot);
+      await load();
+      setMsg('Storage root changed successfully.');
+      setMigrationInfo(null);
+    } catch (e) { setMsg(`Migration failed: ${String(e)}`); } finally { setBusy(false); }
+  };
+  const openRoot = async () => { await window.posterApi.openStorageRoot(); };
+  const clearDir = async (dir: 'cache' | 'temp') => {
+    setBusy(true);
+    try {
+      const cleared = dir === 'cache' ? await window.posterApi.clearCache() : await window.posterApi.clearTemp();
+      setMsg(`Cleared ${cleared} files from ${dir}.`);
+      await load();
+    } catch (e) { setMsg(String(e)); } finally { setBusy(false); }
+  };
+  const usage = settings?.usage;
+  return <section className="page-scroll">
+    <div className="workflow-card">
+      <h2>Settings</h2>
+
+      <h3>Storage location</h3>
+      <p>All project files, Photoshop exports, brand assets, and cache are stored here.</p>
+      <div className="storage-info">
+        <div className="storage-path"><b>Current root</b><code>{settings?.root || base}</code><button className="small" onClick={openRoot}>Open in Explorer</button></div>
+        {usage && <div className="storage-stats">
+          <span>Disk: {((usage.disk?.usedBytes || 0) / 1e12).toFixed(1)} TB / {((usage.disk?.totalBytes || 1) / 1e12).toFixed(1)} TB ({(usage.disk?.usagePercent || 0).toFixed(1)}%)</span>
+          <span>Cache: {(usage.cacheSizeBytes / 1e6).toFixed(1)} MB</span>
+          <span>Temp: {(usage.tempSizeBytes / 1e6).toFixed(1)} MB</span>
+          <span>{usage.directories?.length || 0} directories</span>
+        </div>}
+      </div>
+      <div className="button-row">
+        <button disabled={busy} onClick={changeRoot}>Change storage location…</button>
+        <button disabled={busy} onClick={() => clearDir('cache')}>Clear cache</button>
+        <button disabled={busy} onClick={() => clearDir('temp')}>Clear temp files</button>
+      </div>
+
+      {migrationInfo && <div className="migration-card">
+        <h4>Migrate to new location?</h4>
+        <p>New root: <code>{migrationInfo.newRoot}</code></p>
+        <p>Files to migrate: {migrationInfo.totalFiles ?? '…'} ({((migrationInfo.totalSize ?? 0) / 1e6).toFixed(0)} MB)</p>
+        <div className="button-row">
+          <button className="primary" disabled={busy} onClick={confirmMigration}>Migrate & switch</button>
+          <button disabled={busy} onClick={() => setMigrationInfo(null)}>Cancel</button>
+        </div>
+      </div>}
+
+      {msg && <div className={/success/i.test(msg) ? 'status success' : 'status error'}>{msg}</div>}
+
+      <h3>Experimental integrations</h3>
+      <p>Google Photos is hidden from the Daily Prayer workflow until it is configured and verified. Local upload is the primary photo method.</p>
+    </div>
+  </section>;
+}
+
 function App() {
   const [page, setPage] = useState<Page>('Dashboard');
   const [step, setStep] = useState<WorkflowStep>(1);
@@ -371,8 +476,8 @@ function App() {
         <PreviewPanel plan={previewPlan} result={result} zoom={zoom} setZoom={setZoom} fullscreen={fullscreen} setFullscreen={setFullscreen} />
       </section>}
       {page === 'Brand Assets' && <section className="page-scroll"><SchoolProfiles profiles={profiles} reload={reloadProfiles} selectedId={selectedId} onSelect={setSelectedId} /></section>}
-      {page === 'Edit Existing PSD' && <section className="page-scroll"><div className="workflow-card"><h2>Analyze current PSD</h2><p>Open a PSD in Photoshop, then inspect its layer hierarchy and proposed content roles without changing the original document.</p><div className="button-row"><button className="primary" disabled={busy} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze current PSD'}</button><button onClick={() => window.posterApi.assistantOpen()}>Open Design Assistant</button></div>{analysis && <div className="analysis-summary"><b>{analysis.document.name} · {analysis.document.width} × {analysis.document.height}</b><p>{analysis.layers.length} layers detected. Mapping controls will appear here after analysis.</p></div>}{status && <div className="status">{status}</div>}</div></section>}
-      {page === 'Settings' && <section className="page-scroll"><div className="workflow-card"><h2>Settings</h2><h3>Experimental integrations</h3><p>Google Photos is hidden from the Daily Prayer workflow until it is configured and verified. Local upload is the primary photo method.</p></div></section>}
+      {page === 'Edit Existing PSD' && <section className="page-scroll"><div className="workflow-card"><h2>Analyze current PSD</h2><p>Open a PSD in Photoshop, then inspect its layer hierarchy and proposed content roles without changing the original document.</p><div className="button-row"><button className="primary" disabled={busy} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze current PSD'}</button><button onClick={() => window.posterApi.assistantOpen()}>Open Design Assistant</button></div>{analysis && <PsdAnalysisPanel analysis={analysis} />}{status && <div className="status">{status}</div>}</div></section>}
+      {page === 'Settings' && <SettingsPage base={base} />}
     </main>
   </div>;
 }

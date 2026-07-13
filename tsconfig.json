@@ -14,5 +14,6 @@
     "resolveJsonModule": true,
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src", "src-v2"]
+  "include": ["src", "src-v2"],
+  "exclude": []
 }

@@ -28,10 +28,10 @@ describe('poster request validation (§9)', () => {
     expect(result.issues.some((i) => i.field === 'prayerContent')).toBe(true);
   });
 
-  it('names the missing school logo explicitly', async () => {
+  it('allows a missing optional school logo so the layout can rebalance', async () => {
     const result = await validatePosterRequest(request(), profile());
-    const logo = result.issues.find((i) => i.field === 'mainLogo');
-    expect(logo?.message).toMatch(/no school logo has been uploaded/);
+    expect(result.issues.some((issue) => issue.field === 'mainLogo')).toBe(false);
+    expect(result.ok).toBe(true);
   });
 
   it('flags a student photo path that does not exist', async () => {

@@ -1,0 +1,144 @@
+{
+  "score": {
+    "overall": 91,
+    "hierarchy": 85,
+    "balance": 65,
+    "alignment": 100,
+    "whitespace": 75,
+    "rhythm": 80,
+    "contrast": 100,
+    "readability": 100,
+    "visualWeight": 100,
+    "photoQuality": 100,
+    "brandConsistency": 90,
+    "decorationRestraint": 100,
+    "contentCompleteness": 100,
+    "details": [
+      {
+        "category": "hierarchy",
+        "score": 85,
+        "issues": [
+          "10 text elements have approximately the same size, creating visual monotony"
+        ],
+        "suggestions": [
+          "Vary text sizes more dramatically to create clear reading order."
+        ]
+      },
+      {
+        "category": "balance",
+        "score": 65,
+        "issues": [
+          "Poster is heavily weighted to one side horizontally",
+          "Poster is heavily weighted to one side vertically"
+        ],
+        "suggestions": [
+          "Move content to balance visual weight across the horizontal axis.",
+          "Distribute content more evenly vertically."
+        ]
+      },
+      {
+        "category": "alignment",
+        "score": 100,
+        "issues": [],
+        "suggestions": []
+      },
+      {
+        "category": "whitespace",
+        "score": 75,
+        "issues": [
+          "Insufficient whitespace (-279%), poster feels cluttered"
+        ],
+        "suggestions": [
+          "Increase margins, reduce element sizes, or remove non-essential decorative elements."
+        ]
+      },
+      {
+        "category": "rhythm",
+        "score": 80,
+        "issues": [
+          "Programme items have uniform spacing, creating a plain form-like appearance",
+          "Multiple elements share identical dimensions, creating a grid-like monotony"
+        ],
+        "suggestions": [
+          "Vary programme structure slightly - use groupings, indentation, or subtle size variations.",
+          "Vary the sizes of content blocks to create a more dynamic rhythm."
+        ]
+      },
+      {
+        "category": "contrast",
+        "score": 100,
+        "issues": [],
+        "suggestions": []
+      },
+      {
+        "category": "readability",
+        "score": 100,
+        "issues": [],
+        "suggestions": []
+      },
+      {
+        "category": "visualWeight",
+        "score": 100,
+        "issues": [],
+        "suggestions": []
+      },
+      {
+        "category": "photoQuality",
+        "score": 100,
+        "issues": [],
+        "suggestions": []
+      },
+      {
+        "category": "brandConsistency",
+        "score": 90,
+        "issues": [
+          "Logo is oversized (92% of canvas dimension)"
+        ],
+        "suggestions": [
+          "Reduce the school logo by 87%."
+        ]
+      },
+      {
+        "category": "decorationRestraint",
+        "score": 100,
+        "issues": [],
+        "suggestions": []
+      },
+      {
+        "category": "contentCompleteness",
+        "score": 100,
+        "issues": [],
+        "suggestions": []
+      }
+    ]
+  },
+  "totalNodes": 35,
+  "candidates": [
+    {
+      "id": "candidate-bold-graphic-v1-1fc7e787",
+      "score": 91
+    },
+    {
+      "id": "candidate-bold-graphic-v2-f0144257",
+      "score": 91
+    },
+    {
+      "id": "candidate-editorial-minimal-v1-668abc9e",
+      "score": 90
+    },
+    {
+      "id": "candidate-editorial-minimal-v2-887f1333",
+      "score": 82
+    },
+    {
+      "id": "candidate-photo-story-v1-22218512",
+      "score": 81
+    },
+    {
+      "id": "candidate-photo-story-v2-136a1bc3",
+      "score": 81
+    }
+  ],
+  "jsxFile": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\test-pro-output\\SNHS_Pro_Poster_v1.jsx",
+  "jsxSize": 10903
+}

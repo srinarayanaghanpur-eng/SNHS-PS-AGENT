@@ -39,6 +39,13 @@ const BRAND_COLOR_FIELDS: [string, string][] = [
   ['primary', 'Primary'], ['secondary', 'Secondary'], ['accent', 'Accent'], ['background', 'Background'],
 ];
 
+const ASSET_GROUPS: { title: string; keys: BrandAssetKey[] }[] = [
+  { title: 'Branding', keys: ['mainLogo', 'secondaryLogo', 'leadLogo', 'groupLogo', 'sponsorLogo'] },
+  { title: 'Management', keys: ['chairmanPhoto', 'correspondentPhoto', 'directorPhoto', 'principalPhoto', 'headmasterPhoto'] },
+  { title: 'Campus', keys: ['campusPhoto', 'buildingPhoto', 'busPhoto', 'defaultBackground'] },
+  { title: 'Documents', keys: ['signature', 'stamp', 'qrCode'] },
+];
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -69,6 +76,7 @@ export function SchoolProfiles({ profiles, reload, selectedId, onSelect }: {
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [previewAsset, setPreviewAsset] = useState<BrandAsset | null>(null);
   const [showCrop, setShowCrop] = useState<BrandAssetKey | null>(null);
+  const [cropDraft, setCropDraft] = useState({ zoom: 1, offsetX: 0, offsetY: 0 });
 
   useEffect(() => {
     setDraft(profile ?? null);
@@ -96,9 +104,9 @@ export function SchoolProfiles({ profiles, reload, selectedId, onSelect }: {
     setDraft({ ...draft, management: { ...draft.management, [role]: { ...draft.management[role], [field]: value } } });
   };
 
-  const uploadAsset = async (key: BrandAssetKey) => {
+  const uploadAsset = async (key: BrandAssetKey, sourcePath?: string) => {
     setStatus(`Importing ${ASSET_LABELS[key]}…`);
-    const r: any = await window.posterApi.assetImport(draft.id, key);
+    const r: any = await window.posterApi.assetImport(draft.id, key, sourcePath);
     if (r?.canceled) { setStatus(''); return; }
     if (r?.error) { setStatus(r.error); return; }
     await reload();
@@ -112,6 +120,24 @@ export function SchoolProfiles({ profiles, reload, selectedId, onSelect }: {
     await reload();
     setStatus(`${ASSET_LABELS[key]} removed.`);
     setTimeout(() => setStatus(''), 3000);
+  };
+
+  const openCrop = (key: BrandAssetKey) => {
+    const value = draft.assets[key]?.crop ?? { zoom: 1, offsetX: 0, offsetY: 0 };
+    setCropDraft(value); setShowCrop(key);
+  };
+
+  const saveCrop = async () => {
+    if (!showCrop) return;
+    await window.posterApi.assetSetCrop(draft.id, showCrop, cropDraft);
+    await reload(); setShowCrop(null); setStatus('Crop saved.');
+  };
+
+  const dropAsset = async (key: BrandAssetKey, event: React.DragEvent) => {
+    event.preventDefault();
+    const path = (event.dataTransfer.files[0] as File & { path?: string } | undefined)?.path;
+    if (path) await uploadAsset(key, path);
+    else setStatus('Drop could not read the local path. Use Upload instead.');
   };
 
   const handleDelete = async () => {
@@ -227,37 +253,28 @@ export function SchoolProfiles({ profiles, reload, selectedId, onSelect }: {
       <h3 style={{ marginTop: 24 }}>Brand Assets</h3>
       {missing.length > 0 && <div className="file" style={{ borderColor: '#c0392b', marginBottom: 12 }}><b>⚠ {missing.length} asset file(s) moved or deleted</b>{missing.map((m) => <span key={m.key}>{ASSET_LABELS[m.key as BrandAssetKey]}</span>)}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-        {BRAND_ASSET_KEYS.map((key) => {
-          const asset = draft.assets[key];
-          return (
-            <div key={key} className="file" style={{ margin: 0, padding: 12 }}>
-              <b style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{ASSET_LABELS[key]}</b>
-              {asset ? (
-                <>
-                  <div style={{ cursor: 'pointer' }} onClick={() => setPreviewAsset(asset)}>
-                    <AssetThumbnail asset={asset} />
-                  </div>
-                  <div style={{ fontSize: 10, color: '#8ca8c9', marginTop: 6, lineHeight: 1.5 }}>
-                    {asset.originalName}<br />
-                    {asset.width && asset.height ? `${asset.width}×${asset.height} · ` : ''}{formatFileSize(asset.bytes)} · {asset.format.toUpperCase()}
-                    {asset.hasAlpha ? ' · alpha' : ''}
-                  </div>
-                  <div className="actions" style={{ marginTop: 6, gap: 4 }}>
-                    <button onClick={() => uploadAsset(key)} style={{ fontSize: 11, padding: '4px 8px' }}>Replace</button>
-                    <button onClick={() => setShowCrop(key)} style={{ fontSize: 11, padding: '4px 8px' }} disabled title="Coming soon">Crop</button>
-                    <button onClick={() => removeAsset(key)} style={{ fontSize: 11, padding: '4px 8px', borderColor: '#a03' }}>Remove</button>
-                  </div>
-                </>
-              ) : (
-                <div style={{ height: 80, background: '#0d213b', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #294a70' }}>
-                  <button onClick={() => uploadAsset(key)} style={{ fontSize: 11, padding: '4px 12px' }}>Upload</button>
+      {ASSET_GROUPS.map((section) => <section key={section.title} style={{ marginTop: 16 }}>
+        <h4 style={{ margin: '0 0 8px' }}>{section.title}</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+          {section.keys.map((key) => {
+            const asset = draft.assets[key];
+            return <div key={key} className="file" style={{ margin: 0, padding: 10 }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void dropAsset(key, event)}>
+              <b style={{ fontSize: 12 }}>{ASSET_LABELS[key]}</b>
+              {asset ? <>
+                <div style={{ cursor: 'pointer' }} onClick={() => setPreviewAsset(asset)}><AssetThumbnail asset={asset} /></div>
+                <div style={{ fontSize: 10, color: '#667b94', lineHeight: 1.5 }}>
+                  {asset.originalName}<br />
+                  {asset.width && asset.height ? `${asset.width} × ${asset.height} · ` : ''}{formatFileSize(asset.bytes)} · {asset.format.toUpperCase()}<br />
+                  Updated {new Date(asset.importedAt).toLocaleString()}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                <div className="actions"><button onClick={() => uploadAsset(key)}>Replace</button><button onClick={() => openCrop(key)}>Crop</button><button onClick={() => removeAsset(key)} className="danger-text">Remove</button></div>
+              </> : <div style={{ minHeight: 76, display: 'grid', placeItems: 'center', border: '1px dashed #9fb0c4', borderRadius: 7, color: '#71839a', fontSize: 11 }}>
+                <span>Drop image here</span><button onClick={() => uploadAsset(key)}>Upload</button>
+              </div>}
+            </div>;
+          })}
+        </div>
+      </section>)}
 
       {/* Asset preview modal */}
       {previewAsset && (
@@ -275,13 +292,17 @@ export function SchoolProfiles({ profiles, reload, selectedId, onSelect }: {
         </div>
       )}
 
-      {/* Crop placeholder */}
       {showCrop && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowCrop(null)}>
           <div className="card" onClick={(e) => e.stopPropagation()}>
             <h3>Crop: {ASSET_LABELS[showCrop]}</h3>
-            <p>Crop controls coming in the next update. Use an external image editor for now.</p>
-            <button onClick={() => setShowCrop(null)}>Close</button>
+            {draft.assets[showCrop] && <div style={{ width: 420, height: 260, overflow: 'hidden', borderRadius: 8, background: '#dfe7f0' }}><img src={`file://${draft.assets[showCrop]!.path}`} alt="Crop preview" style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `translate(${cropDraft.offsetX * 18}%, ${cropDraft.offsetY * 18}%) scale(${cropDraft.zoom})` }} /></div>}
+            <div className="crop-controls" style={{ marginTop: 12 }}>
+              <label>Zoom<input type="range" min="1" max="4" step="0.05" value={cropDraft.zoom} onChange={(e) => setCropDraft({ ...cropDraft, zoom: Number(e.target.value) })} /></label>
+              <label>Horizontal<input type="range" min="-1" max="1" step="0.05" value={cropDraft.offsetX} onChange={(e) => setCropDraft({ ...cropDraft, offsetX: Number(e.target.value) })} /></label>
+              <label>Vertical<input type="range" min="-1" max="1" step="0.05" value={cropDraft.offsetY} onChange={(e) => setCropDraft({ ...cropDraft, offsetY: Number(e.target.value) })} /></label>
+            </div>
+            <div className="actions" style={{ marginTop: 10 }}><button onClick={() => setShowCrop(null)}>Cancel</button><button className="primary" onClick={saveCrop}>Save crop</button></div>
           </div>
         </div>
       )}

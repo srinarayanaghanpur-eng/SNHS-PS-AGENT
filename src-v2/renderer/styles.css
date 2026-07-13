@@ -141,6 +141,19 @@ p { color: #65758a; line-height: 1.5; }
 .fullscreen-preview { position: fixed; inset: 0; z-index: 100; width: 100vw; height: 100vh; padding: 18px; background: #dfe7f0; }
 
 .analysis-summary { margin-top: 16px; }
+.analysis-panel { display: grid; gap: 12px; margin-top: 14px; }
+.analysis-summary { display: flex; justify-content: space-between; gap: 12px; }
+.layer-tree { display: grid; gap: 3px; }
+.layer-branch details { border-left: 1px solid #d3deea; margin-left: 5px; padding-left: 10px; }
+.layer-branch summary, .layer-leaf { padding: 6px 8px; border-radius: 6px; color: #284463; background: #f6f9fc; font-size: 11px; }
+.layer-branch summary span, .layer-leaf span { float: right; color: #7a899c; }
+.mapping-table { min-width: 720px; overflow: hidden; border: 1px solid #d6e0eb; border-radius: 9px; }
+.mapping-head, .mapping-row { display: grid; grid-template-columns: minmax(190px, 1.5fr) 90px 150px 90px 100px; align-items: center; gap: 8px; padding: 8px 10px; font-size: 11px; }
+.mapping-head { background: #e8eef5; }
+.mapping-row { border-top: 1px solid #e3e9f0; }
+.mapping-row select { padding: 6px; font-size: 11px; }
+.mapping-row label { display: flex; align-items: center; gap: 5px; }
+.mapping-row input { width: auto; }
 .page-scroll .card { max-width: 1280px; margin: 0 auto; }
 .actions, .form { display: flex; flex-wrap: wrap; gap: 8px; }
 .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }

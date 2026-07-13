@@ -10,6 +10,9 @@ import { app, type WebContents } from 'electron';
 import { posterRequestSchema, progressChannel, type PosterGenerationResult, type PosterProgressEvent, type PosterVariationResult } from '../shared/ipc';
 import { atomicJson, baseFolder } from './storage';
 import { composePoster } from './design/composer';
+import { emitJsx } from './design/jsxEmitter';
+import { runProDesignPipeline, legacyToContentInput } from './design/pro/orchestrator';
+import { emitJsxFromSceneGraph } from './design/pro/jsxEmitterPro';
 import { log } from './logger';
 import { validateImageFile } from './imageValidation';
 import { getProfile } from './brandKit/profileStore';
@@ -110,43 +113,97 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
   const count = input.variations ?? 1;
   const variations: PosterVariationResult[] = [];
   let lastQuality: { score: number; warnings: { code: string; message: string; severity: string }[]; fixesApplied: string[] } | null = null;
-  for (let v = 0; v < count; v++) {
-    progress(1, v);
-    const compose: ComposeInput = {
-      category: input.category, presetId: v === 0 ? input.presetId : undefined,
+
+  // ── Pro design engine path ──
+  if (input.useProEngine) {
+    progress(1, 0);
+    const contentInput = legacyToContentInput({
+      category: input.category,
       headline: input.headline, subheadline: input.subheadline || undefined,
       message: input.message || undefined, details: input.details || undefined, venue: input.venue,
       photos, prayer: input.prayer,
       school: { ...brand.school, logoPath: brand.assets.mainLogo?.path },
       brand: brand.brand, assets: brand.assets, management: brand.management,
       width: input.width ?? 1080, height: input.height ?? 1350,
-      variationSeed: v,
-    } as ComposeInput;
-    progress(2, v);
-    const plan = composePoster(compose);
-    const quality = validateAndFix(plan);
-    lastQuality = { score: quality.score, warnings: quality.warnings.map((w) => ({ code: w.code, message: w.message, severity: w.severity })), fixesApplied: quality.fixesApplied };
-    progress(3, v);
-    const outDir = join(jobDir, `output-v${v + 1}`);
-    await mkdir(outDir, { recursive: true });
-    const presetUsed = input.presetId && v === 0 ? input.presetId : 'auto';
-    const jsx = emitJsx(plan, { outputDir: outDir, exportPng: input.exportPng ?? true, exportJpg: true, docName: `SNHS_${input.category}_v${v + 1}` });
-    const jsxFile = join(jobDir, `generate-v${v + 1}.jsx`);
-    await writeFile(jsxFile, jsx, 'utf8');
-    progress(4, v);
-    const result = await runJsxInPhotoshop(jsxFile, outDir);
-    if (!result.success) throw new Error(`POSTER_JSX_FAILED ${result.details}`);
-    progress(5, v);
-    progress(6, v);
-    variations.push({
-      variation: v + 1, presetId: presetUsed,
-      psdPath: result.psdPath, jpgPath: result.jpgPath, pngPath: result.pngPath,
-      quality: lastQuality,
-      photoshopWarnings: [
-        ...rejectedPhotos.map((p) => `PHOTO_REJECTED: ${p}`),
-        ...(result.warnings ? result.warnings.split('|').filter(Boolean) : []),
-      ],
+      variationSeed: 0,
+    } as ComposeInput);
+    progress(2, 0);
+    const proResult = await runProDesignPipeline({
+      width: input.width ?? 1080,
+      height: input.height ?? 1350,
+      content: contentInput,
+      primaryColor: brand.brand.primaryColor || '#1E3A5F',
+      photoPaths: photos.map(p => p.path),
+      outputDir: jobDir,
     });
+    for (let v = 0; v < count; v++) {
+      const outDir = join(jobDir, `output-v${v + 1}`);
+      await mkdir(outDir, { recursive: true });
+      const jsx = emitJsxFromSceneGraph(proResult.finalSceneGraph, {
+        outputDir: outDir,
+        exportPng: input.exportPng ?? true,
+        exportJpg: true,
+        docName: `SNHS_${input.category}_v${v + 1}`,
+      });
+      const jsxFile = join(jobDir, `generate-v${v + 1}.jsx`);
+      await writeFile(jsxFile, jsx, 'utf8');
+      progress(3, v);
+      const result = await runJsxInPhotoshop(jsxFile, outDir);
+      if (!result.success) throw new Error(`POSTER_JSX_FAILED ${result.details}`);
+      progress(4, v);
+      progress(5, v);
+      const quality = proResult.selectedCandidate.qualityScore;
+      lastQuality = { score: quality.overall, warnings: [], fixesApplied: [] };
+      variations.push({
+        variation: v + 1, presetId: 'pro',
+        psdPath: result.psdPath, jpgPath: result.jpgPath, pngPath: result.pngPath,
+        quality: lastQuality,
+        photoshopWarnings: [
+          ...rejectedPhotos.map((p) => `PHOTO_REJECTED: ${p}`),
+          ...(result.warnings ? result.warnings.split('|').filter(Boolean) : []),
+        ],
+      });
+    }
+  } else {
+    // ── Legacy design engine path ──
+    for (let v = 0; v < count; v++) {
+      progress(1, v);
+      const compose: ComposeInput = {
+        category: input.category, presetId: v === 0 ? input.presetId : undefined,
+        headline: input.headline, subheadline: input.subheadline || undefined,
+        message: input.message || undefined, details: input.details || undefined, venue: input.venue,
+        photos, prayer: input.prayer,
+        school: { ...brand.school, logoPath: brand.assets.mainLogo?.path },
+        brand: brand.brand, assets: brand.assets, management: brand.management,
+        width: input.width ?? 1080, height: input.height ?? 1350,
+        variationSeed: v,
+      } as ComposeInput;
+      progress(2, v);
+      const plan = composePoster(compose);
+      const quality = validateAndFix(plan);
+      lastQuality = { score: quality.score, warnings: quality.warnings.map((w) => ({ code: w.code, message: w.message, severity: w.severity })), fixesApplied: quality.fixesApplied };
+      progress(3, v);
+      const outDir = join(jobDir, `output-v${v + 1}`);
+      await mkdir(outDir, { recursive: true });
+      const presetUsed = input.presetId && v === 0 ? input.presetId : 'auto';
+      const jsx = emitJsx(plan, { outputDir: outDir, exportPng: input.exportPng ?? true, exportJpg: true, docName: `SNHS_${input.category}_v${v + 1}` });
+      const jsxFile = join(jobDir, `generate-v${v + 1}.jsx`);
+      await writeFile(jsxFile, jsx, 'utf8');
+      progress(4, v);
+      const result = await runJsxInPhotoshop(jsxFile, outDir);
+      if (!result.success) throw new Error(`POSTER_JSX_FAILED ${result.details}`);
+      progress(5, v);
+      progress(6, v);
+      variations.push({
+        variation: v + 1, presetId: presetUsed,
+        psdPath: result.psdPath, jpgPath: result.jpgPath, pngPath: result.pngPath,
+        quality: lastQuality,
+        photoshopWarnings: [
+          ...rejectedPhotos.map((p) => `PHOTO_REJECTED: ${p}`),
+          ...(result.warnings ? result.warnings.split('|').filter(Boolean) : []),
+        ],
+      });
+    }
   }
 
   const schoolName = brand.school.name;

@@ -41,6 +41,16 @@ export const channels = {
   historyDelete: 'v2:history-delete',
   historyDuplicate: 'v2:history-duplicate',
   historyRegenerate: 'v2:history-regenerate',
+  // ── Storage ──
+  getStorageSettings: 'v2:get-storage-settings',
+  chooseStorageRoot: 'v2:choose-storage-root',
+  validateStorageRoot: 'v2:validate-storage-root',
+  estimateMigration: 'v2:estimate-migration',
+  migrateStorage: 'v2:migrate-storage',
+  openStorageRoot: 'v2:open-storage-root',
+  getStorageUsage: 'v2:get-storage-usage',
+  clearCache: 'v2:clear-cache',
+  clearTemp: 'v2:clear-temp',
   // ── Google Photos connector (additive) ──
   gpStatus: 'v2:gp-status',
   gpConnect: 'v2:gp-connect',
@@ -156,6 +166,8 @@ export const posterRequestSchema = z.object({
   schoolProfileId: z.string().max(80).optional(),
   schoolOverride: schoolOverrideSchema.optional(),
   management: z.object({ chairman: managementPersonSchema.optional(), principal: managementPersonSchema.optional() }).optional(),
+  // ── pro design engine ──
+  useProEngine: z.boolean().optional(),
 }).strict();
 export type PosterRequest = z.infer<typeof posterRequestSchema>;
 export type ManagementPersonRequest = z.infer<typeof managementPersonSchema>;

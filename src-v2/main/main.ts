@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { join } from 'node:path';
 import { channels, openPathSchema, pickImagesSchema, smokeRequestSchema } from '../shared/ipc';
 import { initializeStorage, baseFolder, containedPath } from './storage';
+import { getStorageManager } from './storage/storage-manager';
+import { validateStorageRoot } from './storage/storage-validator';
 import { runPhotoshopSmoke } from './photoshopSmoke';
 import { selectAndImportReference, referenceDialogFilters } from './selectReference';
 import { posterRequestSchema } from '../shared/ipc';
@@ -187,8 +189,12 @@ function registerIpc(): void {
   });
   ipcMain.handle(channels.profileDelete, async (_e, input) => { await deleteProfile(idSchema.parse(input).id); return { ok: true }; });
   ipcMain.handle(channels.assetImport, async (_e, input) => {
-    const { id, key } = z.object({ id: z.string().min(1), key: assetKeySchema }).parse(input);
+    const { id, key, sourcePath } = z.object({ id: z.string().min(1), key: assetKeySchema, sourcePath: z.string().min(1).optional() }).parse(input);
     if (!mainWindow) throw new Error('NO_WINDOW');
+    if (sourcePath) {
+      const profile = await importAsset(id, key as BrandAssetKey, { sourcePath });
+      return { canceled: false, profile };
+    }
     const picked = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] });
     if (picked.canceled || !picked.filePaths[0]) return { canceled: true };
     const profile = await importAsset(id, key as BrandAssetKey, { sourcePath: picked.filePaths[0] });
@@ -210,6 +216,49 @@ function registerIpc(): void {
     const request = posterRequestSchema.parse(input);
     const profile = request.schoolProfileId ? await getProfile(request.schoolProfileId) : null;
     return validatePosterRequest(request, profile);
+  });
+
+  // ── Storage ──
+  ipcMain.handle(channels.getStorageSettings, async () => {
+    const mgr = await getStorageManager();
+    return { root: mgr.getStorageRoot(), usage: await mgr.getStorageUsage() };
+  });
+  ipcMain.handle(channels.chooseStorageRoot, async () => {
+    if (!mainWindow) return { canceled: true };
+    const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+    if (result.canceled || !result.filePaths[0]) return { canceled: true };
+    return { canceled: false, path: result.filePaths[0] };
+  });
+  ipcMain.handle(channels.validateStorageRoot, async (_e, input) => {
+    const { path: dirPath } = z.object({ path: z.string().min(1) }).parse(input);
+    return validateStorageRoot(dirPath);
+  });
+  ipcMain.handle(channels.estimateMigration, async (_e, input) => {
+    const { path: newRoot } = z.object({ path: z.string().min(1) }).parse(input);
+    const mgr = await getStorageManager();
+    return mgr.estimateMigration(newRoot);
+  });
+  ipcMain.handle(channels.migrateStorage, async (_e, input) => {
+    const { path: newRoot } = z.object({ path: z.string().min(1) }).parse(input);
+    const mgr = await getStorageManager();
+    await mgr.setStorageRoot(newRoot);
+    return { ok: true };
+  });
+  ipcMain.handle(channels.openStorageRoot, async () => {
+    const mgr = await getStorageManager();
+    return shell.openPath(mgr.getStorageRoot());
+  });
+  ipcMain.handle(channels.getStorageUsage, async () => {
+    const mgr = await getStorageManager();
+    return mgr.getStorageUsage();
+  });
+  ipcMain.handle(channels.clearCache, async () => {
+    const mgr = await getStorageManager();
+    return mgr.clearCache();
+  });
+  ipcMain.handle(channels.clearTemp, async () => {
+    const mgr = await getStorageManager();
+    return mgr.clearTemp();
   });
 
   // ── History ──

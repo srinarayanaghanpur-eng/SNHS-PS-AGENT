@@ -264,7 +264,12 @@ describe('document analyzer', () => {
       }],
     };
     const scene = buildSceneGraph(raw);
-    expect(scene.
+    expect(scene.document.name).toBe('poster.psd');
+    expect(scene.activeLayerId).toBe(34);
+    expect(scene.layers[0].name).toBe('School Logo');
+  });
+});
+
 // ── Operation JSX emitter ─────────────────────────────────────────────────
 describe('operation JSX emitter', () => {
   const plan = (ops: any[]): ActionPlan => ({

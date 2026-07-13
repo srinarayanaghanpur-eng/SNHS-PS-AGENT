@@ -15,7 +15,7 @@ const posterApi = Object.freeze({
   profileCreate: (patch: Record<string, unknown>) => ipcRenderer.invoke(channels.profileCreate, { patch }),
   profileUpdate: (id: string, patch: Record<string, unknown>) => ipcRenderer.invoke(channels.profileUpdate, { id, patch }),
   profileDelete: (id: string) => ipcRenderer.invoke(channels.profileDelete, { id }),
-  assetImport: (id: string, key: string) => ipcRenderer.invoke(channels.assetImport, { id, key }),
+  assetImport: (id: string, key: string, sourcePath?: string) => ipcRenderer.invoke(channels.assetImport, { id, key, sourcePath }),
   assetRemove: (id: string, key: string) => ipcRenderer.invoke(channels.assetRemove, { id, key }),
   assetSetCrop: (id: string, key: string, crop: { zoom: number; offsetX: number; offsetY: number }) => ipcRenderer.invoke(channels.assetSetCrop, { id, key, crop }),
   assetCheckMissing: (id: string) => ipcRenderer.invoke(channels.assetCheckMissing, { id }),
@@ -53,6 +53,16 @@ const posterApi = Object.freeze({
     ipcRenderer.on(progressChannel, wrapped);
     return () => { ipcRenderer.removeListener(progressChannel, wrapped); };
   },
+  // ── Storage ──
+  getStorageSettings: () => ipcRenderer.invoke(channels.getStorageSettings),
+  chooseStorageRoot: () => ipcRenderer.invoke(channels.chooseStorageRoot),
+  validateStorageRoot: (path: string) => ipcRenderer.invoke(channels.validateStorageRoot, { path }),
+  estimateMigration: (path: string) => ipcRenderer.invoke(channels.estimateMigration, { path }),
+  migrateStorage: (path: string) => ipcRenderer.invoke(channels.migrateStorage, { path }),
+  openStorageRoot: () => ipcRenderer.invoke(channels.openStorageRoot),
+  getStorageUsage: () => ipcRenderer.invoke(channels.getStorageUsage),
+  clearCache: () => ipcRenderer.invoke(channels.clearCache),
+  clearTemp: () => ipcRenderer.invoke(channels.clearTemp),
   // ── History ──
   historyList: () => ipcRenderer.invoke(channels.historyList),
   historyDelete: (id: string, removeFiles: boolean) => ipcRenderer.invoke(channels.historyDelete, { id, removeFiles }),

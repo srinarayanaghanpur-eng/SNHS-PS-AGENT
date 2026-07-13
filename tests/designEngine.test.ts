@@ -23,12 +23,12 @@ describe('design engine', () => {
     }
   });
 
-  it('composes the §8 layer structure 00_BACKGROUND … 10_EFFECTS', () => {
+  it('composes the required editable Daily Prayer layer structure', () => {
     const plan = composePoster(baseInput());
     expect(plan.groups.map((group) => group.name)).toEqual([
-      '00_BACKGROUND', '01_DECORATION', '02_SCHOOL_BRANDING', '03_TITLE',
-      '04_MANAGEMENT', '05_STUDENT_PHOTOS', '06_SPECIAL_EVENT', '07_PRAYER_CONTENT',
-      '08_PROGRAMME_ORDER', '09_FOOTER', '10_EFFECTS',
+      '00_BACKGROUND', '01_DECORATIONS', '02_SCHOOL_HEADER', '03_TITLE_AND_DATE',
+      '04_MANAGEMENT_PHOTOS', '05_STUDENT_PHOTOS', '06_PROGRAMME', '07_MESSAGE',
+      '08_FOOTER', '09_EFFECTS',
     ]);
     expect(plan.groups[0].nodes.length).toBeGreaterThan(0);
   });
@@ -37,9 +37,9 @@ describe('design engine', () => {
     const plan = composePoster(baseInput({
       prayer: { birthdays: [{ name: 'Anu', className: '7B' }], thought: 'Kindness wins.' },
     }));
-    const special = plan.groups.find((group) => group.name === '06_SPECIAL_EVENT')!;
-    const firstTitle = special.nodes.find((n) => n.kind === 'text' && n.name.includes('TITLE'));
-    expect(firstTitle && firstTitle.kind === 'text' ? firstTitle.content : '').toContain('BIRTHDAY');
+    const messages = plan.groups.find((group) => group.name === '07_MESSAGE')!;
+    const birthdayTitle = messages.nodes.find((node) => node.kind === 'text' && node.content.includes('BIRTHDAY'));
+    expect(birthdayTitle && birthdayTitle.kind === 'text' ? birthdayTitle.content : '').toContain('BIRTHDAY');
   });
 
   it('produces genuinely different compositions per variation seed', () => {

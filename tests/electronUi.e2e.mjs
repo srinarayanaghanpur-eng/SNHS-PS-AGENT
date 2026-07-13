@@ -19,7 +19,7 @@ const facts = {
 await page.screenshot({ path: resolve('smoke-output', 'daily-prayer-ui.png'), fullPage: false });
 
 if (mode === 'generate') {
-  await page.getByRole('button', { name: 'Review & Generate', exact: true }).click();
+  await page.locator('.step-tabs button').nth(2).click();
   await page.getByRole('button', { name: 'Generate in Photoshop', exact: true }).click();
   await page.getByText('Photoshop generation completed').waitFor({ timeout: 300_000 });
   facts.resultText = await page.locator('.result-card').innerText();
