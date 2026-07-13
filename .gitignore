@@ -1,0 +1,25 @@
+node_modules/
+dist/
+dist-server/
+electron/main.js
+electron/main.js.map
+electron/preload.js
+electron/preload.js.map
+coverage/
+release/
+*.log
+
+# V2 builds
+dist-v2/
+electron-v2/main.js
+electron-v2/preload.js
+
+# OS
+.DS_Store
+Thumbs.db
+
+# embedded test repos
+dfsdfsdfc/
+
+# generated test outputs
+smoke-output/

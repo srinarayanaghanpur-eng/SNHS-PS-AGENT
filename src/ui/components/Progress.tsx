@@ -1,0 +1,1 @@
+export function Progress({message,percent}:{message:string;percent:number}){return <div className="progress-wrap"><div className="progress-label"><span>{message}</span><span>{percent}%</span></div><div className="progress"><i style={{width:`${percent}%`}}/></div></div>}
