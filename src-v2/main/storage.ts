@@ -1,13 +1,12 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises';
-import { dirname, resolve, sep } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { getStorageManager, StorageManager } from './storage/storage-manager';
+import type { StoragePaths } from './storage/storage-paths';
+import { REQUIRED_DIRECTORIES } from './storage/storagePaths.mjs';
+import { assertContained, sanitizeFilename } from './storage/storagePaths.mjs';
+import { validateStorageRoot } from './storage/storage-validator';
 
-export const folders = [
-  'jobs', 'outputs', 'outputs/psd', 'outputs/png', 'outputs/jpg', 'outputs/pdf',
-  'assets', 'cache', 'cache/previews', 'cache/thumbnails', 'cache/temporary',
-  'history', 'logs', 'backups', 'poster-brain', 'poster-brain/datasets',
-  'poster-brain/models', 'acceptance', 'test-runs',
-] as const;
+export const folders = REQUIRED_DIRECTORIES;
 
 let _mgr: StorageManager | null = null;
 
@@ -42,4 +41,24 @@ export async function atomicJson(path: string, value: unknown): Promise<void> {
 export function getStorageManagerInstance(): StorageManager {
   if (!_mgr) throw new Error('StorageManager not initialized.');
   return _mgr;
+}
+
+export function getStoragePaths(): StoragePaths { return getStorageManagerInstance().getPaths(); }
+
+export interface JobWorkspace { root: string; input: string; assets: string; output: string }
+
+export async function createJobWorkspace(jobId: string): Promise<JobWorkspace> {
+  const safeId = sanitizeFilename(jobId, 'job');
+  const root = assertContained(baseFolder(), join(getStoragePaths().getJobsDirectory(), safeId));
+  const workspace = { root, input: join(root, 'input'), assets: join(root, 'assets'), output: join(root, 'output') };
+  await Promise.all(Object.values(workspace).map((directory) => mkdir(directory, { recursive: true })));
+  return workspace;
+}
+
+export async function assertStorageReady(minimumFreeBytes = 1024 * 1024 * 1024): Promise<void> {
+  const validation = await validateStorageRoot(baseFolder());
+  if (!validation.valid) throw new Error(`STORAGE_ROOT_UNAVAILABLE: ${validation.errors.join(' ')}`);
+  if (validation.freeBytes > 0 && validation.freeBytes < minimumFreeBytes) {
+    throw new Error(`INSUFFICIENT_STORAGE_SPACE: ${validation.freeBytes} bytes free; ${minimumFreeBytes} required before Photoshop export.`);
+  }
 }

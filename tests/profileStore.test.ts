@@ -3,10 +3,14 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// storage.ts derives baseFolder() from electron app.getPath('documents').
-// Mock electron so the real storage + store run end-to-end against a temp dir.
+// Mock Electron so the real storage + store run end-to-end against temp roots.
 let tempBase: string;
-vi.mock('electron', () => ({ app: { getPath: () => tempBase, isPackaged: false, getAppPath: () => tempBase } }));
+let tempDataRoot: string;
+vi.mock('electron', () => ({ app: {
+  getPath: (name: string) => name === 'userData' ? tempBase : name === 'exe' ? 'C:\\SNHS-Test-App\\SNHS.exe' : tempBase,
+  isPackaged: false,
+  getAppPath: () => 'C:\\SNHS-Test-App\\resources\\app.asar',
+} }));
 vi.mock('../src-v2/main/logger', () => ({ log: () => {}, installCrashHandlers: () => {} }));
 
 import * as store from '../src-v2/main/brandKit/profileStore';
@@ -20,8 +24,18 @@ function writePng(path: string): void {
   writeFileSync(path, Buffer.from([...sig, ...ihdr, ...Array(200).fill(0)]));
 }
 
-beforeEach(async () => { tempBase = mkdtempSync(join(tmpdir(), 'snhs-store-')); resetStorageManager(); await initializeStorage(); });
-afterEach(() => { rmSync(tempBase, { recursive: true, force: true }); });
+beforeEach(async () => {
+  tempBase = mkdtempSync(join(tmpdir(), 'snhs-store-'));
+  tempDataRoot = mkdtempSync(join(tmpdir(), 'snhs-runtime-'));
+  process.env.SNHS_AGENT_DATA_ROOT = tempDataRoot;
+  resetStorageManager();
+  await initializeStorage();
+});
+afterEach(() => {
+  delete process.env.SNHS_AGENT_DATA_ROOT;
+  rmSync(tempBase, { recursive: true, force: true });
+  rmSync(tempDataRoot, { recursive: true, force: true });
+});
 
 describe('profile store', () => {
   it('seeds the built-in SNHS profile on first init', async () => {
@@ -48,7 +62,7 @@ describe('profile store', () => {
     const src = join(tempBase, 'logo.png');
     writePng(src);
     const updated = await store.importAsset(profile.id, 'mainLogo', { sourcePath: src });
-    expect(updated.assets.mainLogo?.path).toContain(join('BrandKits', profile.id, 'logos'));
+    expect(updated.assets.mainLogo?.path).toContain(join('assets', 'school-profiles', profile.id, 'logos'));
     expect(updated.assets.mainLogo?.hasAlpha).toBe(true);
     // reload from disk to confirm persistence
     const reloaded = await store.getProfile(profile.id);

@@ -1,12 +1,15 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { assertContained, createStoragePaths } from '../src-v2/main/storage/storagePaths.mjs';
 
 const [name, sourceArg, outputArg] = process.argv.slice(2);
-if (!name || !sourceArg || !outputArg) {
-  throw new Error('Usage: node scripts/collectAcceptanceArtifacts.mjs <name> <job-dir> <output-root>');
+if (!name || !sourceArg) {
+  throw new Error('Usage: node scripts/collectAcceptanceArtifacts.mjs <name> <job-dir> [E-drive-acceptance-root]');
 }
 
-const source = resolve(sourceArg); const destination = resolve(outputArg, name);
+const runtime = createStoragePaths();
+const outputRoot = outputArg ? assertContained(runtime.root, resolve(outputArg)) : runtime.acceptance;
+const source = resolve(sourceArg); const destination = resolve(outputRoot, name);
 await mkdir(destination, { recursive: true });
 
 const copies = [

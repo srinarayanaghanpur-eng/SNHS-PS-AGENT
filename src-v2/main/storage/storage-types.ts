@@ -1,27 +1,42 @@
 export const REQUIRED_DIRECTORIES = [
   'jobs',
-  'outputs',
-  'outputs/psd',
-  'outputs/png',
-  'outputs/jpg',
-  'outputs/pdf',
+  'psd',
+  'exports',
+  'exports/png',
+  'exports/jpg',
+  'exports/pdf',
+  'previews',
+  'previews/thumbnails',
   'assets',
-  'cache',
-  'cache/previews',
-  'cache/thumbnails',
-  'cache/temporary',
+  'temp',
+  'temp/cache',
+  'temp/fonts',
+  'temp/image-analysis',
   'history',
   'logs',
   'backups',
   'poster-brain',
   'poster-brain/datasets',
   'poster-brain/models',
+  'poster-brain/embeddings',
+  'poster-brain/checkpoints',
+  'poster-brain/training-runs',
+  'assets/school-logos',
+  'assets/lead-logos',
+  'assets/chairman',
+  'assets/principal',
+  'assets/campuses',
+  'assets/event-photos',
+  'assets/backgrounds',
+  'assets/school-profiles',
   'acceptance',
   'test-runs',
+  'settings',
 ] as const;
 
 export interface StorageSettings {
-  rootPath: string;
+  dataRoot: string;
+  rootPath?: string;
   schemaVersion: number;
   updatedAt: string;
 }

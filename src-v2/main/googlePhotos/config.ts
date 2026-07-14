@@ -1,7 +1,7 @@
 // Resolves the Google OAuth "Desktop app" client credentials the Picker
 // connector needs. Credentials are read from (in order):
 //   1. Environment variables SNHS_GOOGLE_CLIENT_ID / SNHS_GOOGLE_CLIENT_SECRET
-//   2. Documents/SNHS Smart Poster Agent/Config/google-oauth.json
+//   2. <configured data root>/settings/google-photos/google-oauth.json
 //      { "clientId": "...", "clientSecret": "..." }
 //
 // The client secret for a Google "Desktop app" OAuth client is not a true
@@ -10,7 +10,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { baseFolder } from '../storage';
+import { getStoragePaths } from '../storage';
 
 // Read-only scope for the new Picker API. The deprecated unrestricted Library
 // scope (photoslibrary.readonly) is deliberately NOT requested (§19).
@@ -22,7 +22,7 @@ export interface OAuthClientConfig {
 }
 
 export function configFilePath(): string {
-  return join(baseFolder(), 'Config', 'google-oauth.json');
+  return join(getStoragePaths().getSettingsDirectory(), 'google-oauth.json');
 }
 
 let cached: OAuthClientConfig | null | undefined;

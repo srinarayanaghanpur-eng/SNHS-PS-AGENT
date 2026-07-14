@@ -1,6 +1,6 @@
-import { readdir, stat, copyFile, mkdir, rename } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
-import { createWriteStream } from 'node:fs';
+import { readdir, stat, copyFile, mkdir, rename, unlink, utimes } from 'node:fs/promises';
+import { basename, dirname, extname, join, relative, resolve } from 'node:path';
+import { createWriteStream, existsSync } from 'node:fs';
 import type { MigrationPlan, MigrationResult } from './storage-types';
 import { StoragePaths } from './storage-paths';
 
@@ -60,8 +60,8 @@ export async function executeMigration(
   mode: MigrationMode,
   onProgress?: (current: number, total: number, file: string) => void,
 ): Promise<MigrationResult> {
-  const logPath = join(targetRoot, 'Logs', `migration-${Date.now()}.log`);
-  await mkdir(join(targetRoot, 'Logs'), { recursive: true });
+  const logPath = join(targetRoot, 'logs', `migration-${Date.now()}.log`);
+  await mkdir(join(targetRoot, 'logs'), { recursive: true });
   const logStream = createWriteStream(logPath, { flags: 'a', encoding: 'utf8' });
   const log = (msg: string) => { logStream.write(`[${new Date().toISOString()}] ${msg}\n`); };
 
@@ -101,14 +101,23 @@ export async function executeMigration(
       const job = fileJobs[i];
       try {
         const s = await stat(job.source);
+        let target = job.target;
+        if (existsSync(target)) {
+          const extension = extname(target); const stem = basename(target, extension);
+          let suffix = 1;
+          do { target = join(dirname(target), `${stem}__migrated_${String(suffix++).padStart(3, '0')}${extension}`); } while (existsSync(target));
+          log(`COLLISION: preserved ${job.target}; using ${target}`);
+        }
+        await mkdir(dirname(target), { recursive: true });
         if (mode === 'move') {
-          await rename(job.source, job.target).catch(async () => {
-            await copyFile(job.source, job.target);
-            const { unlink } = await import('node:fs/promises');
+          await rename(job.source, target).catch(async () => {
+            await copyFile(job.source, target);
+            await utimes(target, s.atime, s.mtime);
             await unlink(job.source).catch(() => { });
           });
         } else {
-          await copyFile(job.source, job.target);
+          await copyFile(job.source, target);
+          await utimes(target, s.atime, s.mtime);
         }
         migrated++;
         bytesMigrated += s.size;

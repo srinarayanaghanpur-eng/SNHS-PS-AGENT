@@ -57,7 +57,7 @@ then generates a Daily Prayer poster and visually inspects the result (§12 chec
 
 | Check (§12) | Result |
 | --- | --- |
-| Upload school logo, LEAD logo, chairman + principal photos | PASS — all 4 imported, copied into `BrandKits/{id}/…`, metadata stored |
+| Upload school logo, LEAD logo, chairman + principal photos | PASS — all 4 imported under `assets/school-profiles/{id}/…`, metadata stored |
 | School name/address/phone/year entered and used | PASS — all appear in header + footer from the profile |
 | Data persists after reload (fresh store read) | PASS — `assetsInProfile` confirmed after re-read; unit test covers reopen |
 | Daily Prayer poster generated | PASS — quality 100/100, PSD + PNG + JPG |

@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { baseFolder } from '../storage';
+import { createJobWorkspace } from '../storage';
 import { log } from '../logger';
 import { runJsx } from './ps-transport';
 import { emitExecuteJsx, emitReplaceBackgroundJsx } from './jsx-operations';
@@ -33,13 +33,13 @@ const jsxResultSchema = z.object({
 export interface ExecuteOptions {
   checkpointName: string;
   previewPng?: boolean;
+  createSnapshot?: boolean;
   trueDelete?: boolean;
 }
 
 export async function executePlan(plan: ActionPlan, opts: ExecuteOptions): Promise<ExecutionResult> {
   const jobId = `assist-${randomUUID()}`;
-  const outputDir = join(baseFolder(), 'Jobs', jobId, 'output');
-  await mkdir(outputDir, { recursive: true });
+  const outputDir = (await createJobWorkspace(jobId)).output;
 
   // One target at a time keeps the atomic guarantee simple and reversible.
   const modified: number[] = [];
@@ -51,6 +51,7 @@ export async function executePlan(plan: ActionPlan, opts: ExecuteOptions): Promi
         outputDir,
         previewPng: opts.previewPng ?? plan.requiresPreview,
         checkpointName: opts.checkpointName,
+        createSnapshot: opts.createSnapshot,
         trueDelete: opts.trueDelete,
       });
       const { raw } = await runJsx({ outputDir, jsxPath: join(outputDir, `exec-${target.layerId}.jsx`), jsxSource: jsx });
@@ -104,8 +105,7 @@ export async function executeBackgroundReplacement(opts: BackgroundReplaceOption
     : null;
 
   const jobId = `assist-bg-${randomUUID()}`;
-  const outputDir = join(baseFolder(), 'Jobs', jobId, 'output');
-  await mkdir(outputDir, { recursive: true });
+  const outputDir = (await createJobWorkspace(jobId)).output;
 
   // When we could not read the image dimensions (e.g. WebP), fall back to a
   // 100% place and let Photoshop's own cover transform run; scale/offset 0.

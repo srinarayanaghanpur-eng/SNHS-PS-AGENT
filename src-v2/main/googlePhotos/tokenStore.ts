@@ -1,12 +1,13 @@
 // Secure at-rest storage for Google OAuth tokens (§18). Tokens are encrypted
 // with Electron safeStorage (OS keychain / DPAPI on Windows) and written to a
-// binary file under the app's userData folder. Tokens are ONLY ever read inside
+// binary file under the configured data root. Tokens are ONLY ever read inside
 // the main process; nothing here is exposed across the IPC bridge, so the
 // renderer can never see an access or refresh token.
 
-import { app, safeStorage } from 'electron';
+import { safeStorage } from 'electron';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { getStoragePaths } from '../storage';
 
 export interface StoredTokens {
   accessToken: string;
@@ -18,7 +19,7 @@ export interface StoredTokens {
 }
 
 function tokenFilePath(): string {
-  return join(app.getPath('userData'), 'google-photos', 'tokens.bin');
+  return join(getStoragePaths().getSettingsDirectory(), 'google-photos', 'tokens.bin');
 }
 
 export async function saveTokens(tokens: StoredTokens): Promise<void> {

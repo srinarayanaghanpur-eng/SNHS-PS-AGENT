@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { z } from 'zod';
-import { atomicJson, baseFolder } from './storage';
+import { atomicJson, createJobWorkspace } from './storage';
 
 const layerSchema: z.ZodType<any> = z.lazy(() => z.object({
   id: z.number(), name: z.string(), type: z.string(), parentPath: z.string(), depth: z.number(),
@@ -81,16 +81,16 @@ export function classifyPsdLayer(item: any, doc: DocumentGeometry): any {
 
 export async function analyzeActivePsd() {
   const jobId = `analysis-${randomUUID()}`;
-  const dir = join(baseFolder(), 'Jobs', jobId);
-  const output = join(dir, 'output');
-  await mkdir(output, { recursive: true });
+  const workspace = await createJobWorkspace(jobId);
+  const dir = workspace.root;
+  const output = workspace.output;
   await atomicJson(join(dir, 'job.json'), { schemaVersion: 1, jobId, type: 'active-psd-analysis', createdAt: new Date().toISOString() });
 
   const source = app.isPackaged
     ? join(process.resourcesPath, 'photoshop', 'analyze-active-document.jsx')
     : join(app.getAppPath(), '..', 'photoshop', 'analyze-active-document.jsx');
   const jsx = join(dir, 'analyze.jsx');
-  const code = (await readFile(source, 'utf8')).replace('__SNHS_OUTPUT__', output.replace(/\\/g, '/'));
+  const code = (await readFile(source, 'utf8')).split('__SNHS_OUTPUT__').join(output.replace(/\\/g, '/'));
   await writeFile(jsx, code, 'utf8');
   const vbs = app.isPackaged
     ? join(process.resourcesPath, 'photoshop', 'smoke-test-dojavascript.vbs')

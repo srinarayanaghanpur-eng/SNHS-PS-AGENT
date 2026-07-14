@@ -5,10 +5,11 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, extname, join } from 'node:path';
 import { app, type WebContents } from 'electron';
 import { posterRequestSchema, progressChannel, type PosterGenerationResult, type PosterProgressEvent, type PosterVariationResult } from '../shared/ipc';
-import { atomicJson, baseFolder } from './storage';
+import { assertStorageReady, atomicJson, createJobWorkspace, getStoragePaths } from './storage';
+import { sanitizeFilename } from './storage/storagePaths.mjs';
 import { composePoster } from './design/composer';
 import { emitJsx } from './design/jsxEmitter';
 import { runProDesignPipeline, legacyToContentInput } from './design/pro/orchestrator';
@@ -82,9 +83,11 @@ async function runJsxInPhotoshop(jsxFile: string, outputDir: string): Promise<{ 
 export async function generatePoster(raw: unknown, sender?: WebContents): Promise<PosterGenerationResult> {
   const input = posterRequestSchema.parse(raw);
   const jobId = `poster-${randomUUID()}`;
-  const jobDir = join(baseFolder(), 'jobs', jobId);
-  await mkdir(jobDir, { recursive: true });
+  await assertStorageReady();
+  const workspace = await createJobWorkspace(jobId);
+  const jobDir = workspace.root;
   await atomicJson(join(jobDir, 'job.json'), { schemaVersion: 2, jobId, type: 'poster', input, createdAt: new Date().toISOString() });
+  await atomicJson(join(workspace.input, 'request.json'), input);
   log('INFO', 'poster.start', { jobId, category: input.category, photos: input.photos?.length ?? 0, variations: input.variations ?? 1 });
   try {
     const env = await detectEnvironment();
@@ -115,7 +118,7 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
     path: p.path, name: p.name, className: p.className,
     zoom: p.zoom, offsetX: p.offsetX, offsetY: p.offsetY,
   }));
-  // Birthday photos supplied inside prayer content join the photo set.
+  // Merge birthday/student photos from prayer content into the general photo set.
   for (const b of input.prayer?.birthdays ?? []) {
     if (b.photo && !photos.some((p) => p.path === b.photo)) photos.push({ path: b.photo, name: b.name, className: b.className, zoom: undefined, offsetX: undefined, offsetY: undefined });
   }
@@ -130,6 +133,25 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
     return null;
   }));
   photos = checked.filter((p): p is typeof photos[number] => p !== null);
+
+  // Freeze all accepted event photos into the job. Photoshop receives only
+  // absolute, job-owned E: paths, so a source file being moved after the job
+  // starts cannot make the render non-reproducible.
+  const sourcePhotos = photos.map((photo) => photo.path);
+  photos = await Promise.all(photos.map(async (photo, index) => {
+    const extension = extname(photo.path).toLowerCase();
+    const stem = sanitizeFilename(basename(photo.path, extension), `photo-${index + 1}`);
+    const jobAssetPath = join(jobDir, 'assets', `${String(index + 1).padStart(2, '0')}-${stem}${extension}`);
+    await copyFile(photo.path, jobAssetPath);
+    return { ...photo, path: jobAssetPath };
+  }));
+  await atomicJson(join(jobDir, 'asset-analysis.json'), {
+    inputCount: input.photos?.length ?? 0,
+    validCount: photos.length,
+    rejected: rejectedPhotos,
+    accepted: photos.map((photo, index) => ({ source: sourcePhotos[index], jobAsset: photo.path })),
+    analysedAt: new Date().toISOString(),
+  });
   if (rejectedPhotos.length) log('WARN', 'poster.photos-rejected', rejectedPhotos);
 
   // Resolve the selected school profile into brand data (colours, fonts, real
@@ -138,9 +160,6 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
   const brand = await resolveBrand(input, profile);
   if (brand.droppedAssets.length) { rejectedPhotos.push(...brand.droppedAssets.map((a) => `asset:${a} (missing)`)); log('WARN', 'poster.assets-dropped', brand.droppedAssets); }
 
-  if (input.category === 'prayer' && (input.variations ?? 1) !== 1) {
-    throw new DesignGenerationError({ code: 'VALID_COMPOSITION_NOT_AVAILABLE', fallbackReason: 'Daily Prayer renders one immutable preview plan per job. Create separate jobs for additional families.' });
-  }
   const count = input.variations ?? 1;
   const variations: PosterVariationResult[] = [];
   let lastQuality: { score: number; warnings: { code: string; message: string; severity: string }[]; fixesApplied: string[] } | null = null;
@@ -153,7 +172,7 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
   let qualityGateReport: ProfessionalQualityGateReport | undefined;
 
   // ── Pro design engine path ──
-  if (input.useProEngine && input.category !== 'prayer') {
+  if (input.useProEngine) {
     progress(1, 0);
     const contentInput = legacyToContentInput({
       category: input.category,
@@ -175,7 +194,7 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
       outputDir: jobDir,
     });
     for (let v = 0; v < count; v++) {
-      const outDir = join(jobDir, `output-v${v + 1}`);
+      const outDir = join(jobDir, 'output', `v${v + 1}`);
       await mkdir(outDir, { recursive: true });
       const jsx = emitJsxFromSceneGraph(proResult.finalSceneGraph, {
         outputDir: outDir,
@@ -218,7 +237,7 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
         requestedCompositionFamily: input.requestedCompositionFamily,
       } as ComposeInput;
       progress(2, v);
-      const suppliedPlan = input.category === 'prayer' && isDesignPlan(input.designPlan) ? input.designPlan : undefined;
+      const suppliedPlan = isDesignPlan(input.designPlan) ? input.designPlan : undefined;
       let plan = suppliedPlan ?? await composePoster(compose);
       // ── Poster Brain: record training data ──
       const brainPlanId = `brain_${jobId}_v${v}`;
@@ -236,36 +255,23 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
           log('INFO', 'brain.pipeline', `Poster ${brainPlanId} needs improvement (${out.criticReport.overallScore}/100)`);
         }
       }).catch((err) => log('ERROR', 'brain.pipeline', err.message));
-      const initialPlanHash = hashDesignPlan(plan);
-      const previewHash = input.category === 'prayer' ? (input.previewPlanHash || initialPlanHash) : initialPlanHash;
-      if (input.category === 'prayer' && previewHash !== initialPlanHash) {
-        throw new DesignGenerationError({ code: 'DESIGN_PLAN_HASH_MISMATCH', requestedFamily: input.requestedCompositionFamily, failures: [`Preview ${previewHash} != supplied plan ${initialPlanHash}`] });
-      }
       immutablePlan = plan;
       designPlanPath = join(jobDir, 'design-plan.json');
       renderLogPath = join(jobDir, 'render-log.json');
-      if (input.category === 'prayer') await atomicJson(designPlanPath, plan);
-      const quality = validateAndFix(input.category === 'prayer' ? JSON.parse(JSON.stringify(plan)) as Plan : plan);
+      const quality = validateAndFix(JSON.parse(JSON.stringify(plan)) as Plan);
 
       // ── Visual Critique + Refinement Loop ──────────────────────────────
-      // After initial composition, run the visual critique. If the score is
-      // below threshold, try a revised layout with different photo ordering
-      // or reduced photo count. This makes the poster look progressively more
-      // human-designed with each iteration.
-      const critiqueScore = input.category === 'prayer' ? -1 : (plan.metadata?.critiqueScore ?? -1);
+      const critiqueScore = plan.metadata?.critiqueScore ?? -1;
       const CRITIQUE_THRESHOLD = 65;
       let refinementRound = 0;
       const MAX_REFINEMENT = 2;
 
       while (critiqueScore >= 0 && critiqueScore < CRITIQUE_THRESHOLD && refinementRound < MAX_REFINEMENT) {
         refinementRound++;
-        // Revise strategy: try different photo ordering or layout adjustments
         const revisedCompose = { ...compose };
         if (refinementRound === 1 && revisedCompose.photos.length > 1) {
-          // Reverse photo order so a different photo becomes hero
           revisedCompose.photos = [...revisedCompose.photos].reverse();
         } else if (refinementRound === 2 && revisedCompose.photos.length > 3) {
-          // Reduce to strongest photos only (fewer, larger frames)
           revisedCompose.photos = revisedCompose.photos.slice(0, Math.min(4, revisedCompose.photos.length));
         }
         const revisedPlan = await composePoster(revisedCompose);
@@ -273,7 +279,6 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
         const revisedScore = revisedPlan.metadata?.critiqueScore ?? -1;
         if (revisedScore > critiqueScore) {
           plan = revisedPlan;
-          // Only log if the revision actually improved things
           if (revisedScore >= CRITIQUE_THRESHOLD) break;
         }
       }
@@ -287,67 +292,23 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
         ],
       };
       progress(3, v);
-      const outDir = join(jobDir, `output-v${v + 1}`);
+      const outDir = join(jobDir, 'output', `v${v + 1}`);
       await mkdir(outDir, { recursive: true });
       const presetUsed = input.presetId && v === 0 ? input.presetId : 'auto';
-      const photoshopPlanHash = hashDesignPlan(plan);
-      if (input.category === 'prayer' && photoshopPlanHash !== previewHash) {
-        throw new DesignGenerationError({ code: 'DESIGN_PLAN_HASH_MISMATCH', failures: [`Preview ${previewHash} != Photoshop ${photoshopPlanHash}`] });
-      }
-      const jsx = emitJsx(plan, { outputDir: outDir, exportPng: input.category === 'prayer' ? true : (input.exportPng ?? true), exportJpg: true, docName: `SNHS_${input.category}_v${v + 1}` });
+      const jsx = emitJsx(plan, { outputDir: outDir, exportPng: input.exportPng ?? true, exportJpg: true, docName: `SNHS_${input.category}_v${v + 1}` });
       const jsxFile = join(jobDir, `generate-v${v + 1}.jsx`);
       await writeFile(jsxFile, jsx, 'utf8');
       progress(4, v);
       const result = await runJsxInPhotoshop(jsxFile, outDir);
       if (!result.success) throw new Error(`POSTER_JSX_FAILED ${result.details}`);
       progress(5, v);
-      if (input.category === 'prayer') {
-        const finalExportPlanHash = hashDesignPlan(plan);
-        const validAssetPaths = [
-          ...photos.map((photo) => photo.path),
-          ...Object.values(brand.assets).flatMap((asset) => asset?.path ? [asset.path] : []),
-          ...[brand.management.chairman?.asset?.path, brand.management.principal?.asset?.path].filter((path): path is string => Boolean(path)),
-        ];
-        qualityGateReport = inspectProfessionalPoster(plan, result.pngPath, {
-          schoolLogoPath: brand.assets.mainLogo?.path, leadLogoPath: brand.assets.leadLogo?.path,
-          heroImagePath: plan.metadata?.heroImagePath, previewPlanHash: previewHash,
-          photoshopPlanHash, finalExportPlanHash, legacyRendererUsed: false,
-        });
-        renderLog = {
-          JOB_ID: jobId, APP_BUILD_VERSION: await appBuildVersion(), SOURCE_COMMIT: await sourceCommit(),
-          SELECTED_COMPOSITION_FAMILY: plan.metadata?.compositionFamily || 'unknown',
-          REQUESTED_COMPOSITION_FAMILY: input.requestedCompositionFamily || 'auto',
-          FALLBACK_REASON: plan.metadata?.fallbackReason || 'none',
-          RENDERER_NAME: plan.metadata?.rendererName || 'immutable-design-plan-jsx', LEGACY_RENDERER_USED: false,
-          INPUT_ASSET_COUNT: (input.photos?.length ?? 0) + Object.keys(profile?.assets ?? {}).length,
-          VALID_ASSET_COUNT: new Set(validAssetPaths).size,
-          HERO_IMAGE_PATH: plan.metadata?.heroImagePath || '', SCHOOL_LOGO_PATH: brand.assets.mainLogo?.path || '',
-          LEAD_LOGO_PATH: brand.assets.leadLogo?.path || '', CHAIRMAN_IMAGE_PATH: brand.management.chairman?.asset?.path || '',
-          DESIGN_PLAN_HASH: initialPlanHash, PREVIEW_PLAN_HASH: previewHash,
-          PHOTOSHOP_PLAN_HASH: photoshopPlanHash, FINAL_EXPORT_PLAN_HASH: finalExportPlanHash,
-          INVALID_OR_MISSING_ASSETS: [...brand.droppedAssets, ...rejectedPhotos],
-          ASSET_USAGE_REPORT: plan.metadata?.assetUsage || { used: [], missing: [], invalid: [] },
-          QUALITY_GATE_REPORT: qualityGateReport,
-        };
-        await atomicJson(renderLogPath!, renderLog);
-        previewPath = join(jobDir, 'preview.png'); finalPath = join(jobDir, 'final.png');
-        await copyFile(result.pngPath, previewPath); await copyFile(result.pngPath, finalPath);
-        await copyFile(result.pngPath, join(jobDir, 'approval.png')); await copyFile(result.psdPath, join(jobDir, 'final.psd'));
-        await copyFile(result.jpgPath, join(jobDir, 'final.jpg'));
-        if (!qualityGateReport.accepted) {
-          throw new DesignGenerationError({ code: 'QUALITY_GATE_REJECTED', requestedFamily: input.requestedCompositionFamily, failures: qualityGateReport.failures, fallbackReason: plan.metadata?.fallbackReason });
-        }
-        lastQuality.warnings.push(...qualityGateReport.warnings.map((message) => ({ code: 'FINAL_RENDER_INSPECTION', message, severity: 'info' })));
-        lastQuality.score = Math.max(0, 100 - qualityGateReport.warnings.length * 3);
-      }
       // ── Poster Brain: record rendered output path ──
-      if (result?.pngPath && input.category === 'prayer') {
-        const qg = qualityGateReport?.accepted ? 100 : 50;
-        recordRenderedOutput(`brain_${jobId}_v${v}`, result.pngPath, lastQuality?.score, qg).catch(() => {});
+      if (result?.pngPath) {
+        recordRenderedOutput(`brain_${jobId}_v${v}`, result.pngPath, lastQuality?.score, quality.score >= 75 ? 100 : 50).catch(() => {});
       }
       progress(6, v);
       variations.push({
-        variation: v + 1, presetId: input.category === 'prayer' ? (plan.metadata?.compositionFamily || presetUsed) : presetUsed,
+        variation: v + 1, presetId: plan.metadata?.compositionFamily || presetUsed,
         psdPath: result.psdPath, jpgPath: result.jpgPath, pngPath: result.pngPath,
         quality: lastQuality,
         photoshopWarnings: [
@@ -374,7 +335,26 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
     if (v.psdPath) { try { await copyOutputFile(v.psdPath, psdTarget); } catch { log('ERROR', 'poster.copy-psd', v.psdPath); } }
     if (v.pngPath) { try { await copyOutputFile(v.pngPath, pngTarget!); } catch { log('ERROR', 'poster.copy-png', v.pngPath); } }
     if (v.jpgPath) { try { await copyOutputFile(v.jpgPath, jpgTarget!); } catch { log('ERROR', 'poster.copy-jpg', v.jpgPath); } }
+    v.psdPath = psdTarget;
+    if (v.pngPath) v.pngPath = pngTarget;
+    if (v.jpgPath) v.jpgPath = jpgTarget;
   }
+
+  if (pngTarget) {
+    const previewsDir = getStoragePaths().getCachePreviewsDirectory();
+    await mkdir(previewsDir, { recursive: true });
+    previewPath = join(previewsDir, `${jobId}.png`);
+    await copyFile(pngTarget, previewPath);
+  }
+
+  renderLog = {
+    ...(renderLog || {}),
+    STORAGE_ROOT: getStoragePaths().getStorageRoot(),
+    JOB_DIRECTORY: jobDir,
+    FINAL_PSD_PATH: psdTarget,
+    FINAL_PNG_PATH: pngTarget,
+    FINAL_JPG_PATH: jpgTarget,
+  };
 
   const qualityScore = lastQuality?.score ?? 80;
   const qualityLabel = qualityScoreLabel(qualityScore);
@@ -422,12 +402,31 @@ async function generateVariations(input: ReturnType<typeof posterRequestSchema.p
   };
   delete (jsonMeta as any).id;
   await writeFile(outputPaths.jsonPath, JSON.stringify(jsonMeta, null, 2), 'utf8');
+  const completedAt = new Date().toISOString();
+  await atomicJson(join(jobDir, 'meta.json'), {
+    schemaVersion: 1,
+    jobId,
+    title: input.headline,
+    schoolId: input.schoolProfileId || '',
+    schoolName,
+    category: input.category,
+    createdAt: completedAt,
+    updatedAt: completedAt,
+    status: 'completed',
+    thumbnailPath: previewPath || pngTarget || jpgTarget || null,
+    previewPath: previewPath || pngTarget || jpgTarget || null,
+    psdPath: psdTarget,
+    pngPath: pngTarget || null,
+    jpgPath: jpgTarget || null,
+    storageRoot: getStoragePaths().getStorageRoot(),
+  });
   await addHistory(historyRecord);
 
   const final: PosterGenerationResult = {
     success: true, jobId, stage: 'completed', variations,
     psdPath: psdTarget, jpgPath: jpgTarget, pngPath: pngTarget,
     designPlanPath, renderLogPath, previewPath, finalPath, renderLog,
+    jobDirectory: jobDir, storageRoot: getStoragePaths().getStorageRoot(),
   };
   await atomicJson(join(jobDir, 'final-result.json'), final);
   return final;

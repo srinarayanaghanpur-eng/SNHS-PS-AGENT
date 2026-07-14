@@ -118,7 +118,9 @@ export class CreativeSupervisor {
   // Executes a plan (called directly after user confirmation/preview approval).
   async applyPlan(plan: ActionPlan): Promise<CommandOutcome> {
     const name = checkpointName(plan.command, plan.operations);
-    const result = await executePlan(plan, { checkpointName: name, previewPng: true });
+    // Quick/controlled Assistant commands rely on Photoshop's native history
+    // states. Full named snapshots can block large PSDs for minutes.
+    const result = await executePlan(plan, { checkpointName: name, previewPng: false, createSnapshot: false });
     if (this.history && result.success) {
       this.history.push(this.history.makeCheckpoint(plan.command, plan.operations, result.modifiedLayerIds));
     }

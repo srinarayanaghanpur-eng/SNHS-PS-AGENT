@@ -6,9 +6,11 @@ import { derivePalette, typographyPairing } from './theme.mjs';
 import { composeCollage } from './family_collage.mjs';
 import { renderPng } from './engine.mjs';
 import { keyWhiteToAlpha } from './photoPipeline.mjs';
+import { createStoragePaths } from '../../storage/storagePaths.mjs';
 
-const assetDir = process.argv[2] || '/sessions/funny-happy-sagan/mnt/ASSETS';
-const outDir = resolve(process.argv[3] || './studio-output-collage');
+const runtime = createStoragePaths();
+const assetDir = process.argv[2] || runtime.assetsEventPhotos;
+const outDir = resolve(process.argv[3] || join(runtime.acceptance, `studio-collage-${Date.now()}`));
 mkdirSync(outDir, { recursive: true });
 
 const files = existsSync(assetDir) ? readdirSync(assetDir) : [];

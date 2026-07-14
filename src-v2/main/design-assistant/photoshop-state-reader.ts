@@ -9,7 +9,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { baseFolder } from '../storage';
+import { createJobWorkspace } from '../storage';
 import { detectEnvironment, environmentError } from '../environment';
 import { runJsx, photoshopResource } from './ps-transport';
 import { buildSceneGraph, findLayer } from './document-analyzer';
@@ -27,12 +27,14 @@ async function ensurePhotoshop(): Promise<void> {
 export async function readSceneGraph(): Promise<SceneGraph> {
   await ensurePhotoshop();
   const jobId = `assist-scan-${randomUUID()}`;
-  const outputDir = join(baseFolder(), 'Jobs', jobId, 'output');
-  await mkdir(outputDir, { recursive: true });
+  const outputDir = (await createJobWorkspace(jobId)).output;
 
   const source = photoshopResource('assistant-analyze.jsx');
   const template = await readFile(source, 'utf8');
-  const jsxSource = template.replace('__SNHS_OUTPUT__', outputDir.replace(/\\/g, '/'));
+  // The token also appears in the JSX header comment. Replacing only the first
+  // occurrence silently leaves the executable path unresolved and Photoshop
+  // writes the result into a literal "__SNHS_OUTPUT__" folder.
+  const jsxSource = template.split('__SNHS_OUTPUT__').join(outputDir.replace(/\\/g, '/'));
 
   const { raw } = await runJsx<any>({
     outputDir,

@@ -48,7 +48,10 @@ try{
   if(app.documents.length===0)throw new Error('NO_DOCUMENT_OPEN');
   var doc=app.activeDocument;
   write({success:true,stage:'completed',
-    document:{name:doc.name,width:Number(doc.width),height:Number(doc.height),resolution:Number(doc.resolution)},
+    document:{name:doc.name,
+      path:scalar(function(){return doc.fullName.fsName;},''),
+      saved:scalar(function(){return !!doc.saved;},false),
+      width:Number(doc.width),height:Number(doc.height),resolution:Number(doc.resolution)},
     activeLayerId:activeId,
     layers:walk(doc,'',null,0,{})});
 }catch(e){write({success:false,stage:'layer-analysis',code:e.message==='NO_DOCUMENT_OPEN'?'NO_DOCUMENT_OPEN':'LAYER_ANALYSIS_FAILED',details:e.message||String(e)});}

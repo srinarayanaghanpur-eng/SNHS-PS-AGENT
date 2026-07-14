@@ -29,17 +29,18 @@ describe('design engine', () => {
   it('composes the required editable Daily Prayer layer structure', () => {
     const plan = prayerPlan();
     expect(plan.groups.map((group) => group.name)).toEqual([
-      '00_BACKGROUND_AND_HERO', '01_DEPTH_AND_SHAPES', '02_SCHOOL_BRANDING',
-      '03_EDITORIAL_TITLE', '04_MORNING_PROGRAMME', '05_PRAYER_MESSAGE', '06_CONTACT_AND_LEAD',
+      '00_BACKGROUND', '01_MAIN_PHOTO', '02_DARK_OVERLAY', '03_SCHOOL_BRANDING',
+      '04_TITLE', '05_DATE', '06_QUOTE', '07_PROGRAMME', '08_FOOTER', '09_EFFECTS',
     ]);
     expect(plan.groups[0].nodes.length).toBeGreaterThan(0);
     expect(plan.metadata?.legacyRendererUsed).toBe(false);
   });
 
-  it('provides six structurally distinct Daily Prayer composition families', () => {
-    expect(DAILY_PRAYER_FAMILIES).toHaveLength(6);
+  it('provides six structurally distinct generative Daily Prayer composition families', () => {
+    const generativeFamilies = DAILY_PRAYER_FAMILIES.filter((family) => family !== 'referenceExactReconstruction');
+    expect(generativeFamilies).toHaveLength(6);
     const photo = { path: 'C:/tmp/assembly.jpg' };
-    const signatures = DAILY_PRAYER_FAMILIES.map((family) => {
+    const signatures = generativeFamilies.map((family) => {
       const assets = family === 'premiumEmblematicAssembly' ? {} : { assemblyPhoto: photo };
       const plan = prayerPlan({ requestedCompositionFamily: family, assets });
       return JSON.stringify(plan.groups.map((g) => g.nodes.map((n) => [n.name, n.kind, 'rect' in n ? n.rect : null])));
@@ -87,7 +88,7 @@ describe('design engine', () => {
   it('emits balanced, parse-safe JSX with editable groups', () => {
     const plan = prayerPlan({ photos: [{ path: 'C:/tmp/a.jpg', name: 'Ravi' }] });
     const jsx = emitJsx(plan, { outputDir: 'C:/tmp/out', exportPng: true, exportJpg: true, docName: 'TEST' });
-    expect(jsx).toContain('00_BACKGROUND_AND_HERO');
+    expect(jsx).toContain('01_MAIN_PHOTO');
     expect(jsx).toContain('placeFile');
     expect(jsx).toContain('gradientLayer');
     expect((jsx.match(/\{/g) ?? []).length).toBe((jsx.match(/\}/g) ?? []).length);

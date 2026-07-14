@@ -2,11 +2,20 @@ import { IncomingMessage, ServerResponse } from 'node:http';
 import { detectPhotosystem, executeJsx, generateJsxDocument, generateJsxTextLayer, executeJsxAsync } from '../photoshop/vbsLauncher';
 import { jsxOpenDocument, jsxCreateDocument, jsxCloseDocument, jsxSavePsd, jsxSavePng, jsxSaveJpeg, jsxAddGroup, jsxAddTextLayer, jsxAddImageLayer, jsxSetLayerVisibility, jsxSetLayerOpacity, jsxMoveLayerIntoGroup, jsxListFonts, jsxGetDocumentInfo, jsxDuplicateDocument, jsxReadLayerInfo } from '../photoshop/jsxGenerators';
 import { readJson, writeText } from '../storage/fileSystemBridge';
-import { join } from 'node:path';
-import { existsSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+import { basename, extname, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { createStoragePaths, sanitizeFilename } from '../../src-v2/main/storage/storagePaths.mjs';
 
-const { os } = require('node:os');
-const tmpdir = require('os').tmpdir();
+const runtime = createStoragePaths();
+function exportPath(requested: string | undefined, kind: 'psd' | 'png' | 'jpg'): string {
+  const extension = kind === 'jpg' ? '.jpg' : `.${kind}`;
+  const rawName = requested ? basename(requested, extname(requested)) : `SNHS_export_${Date.now()}`;
+  const stem = sanitizeFilename(rawName, `SNHS_export_${Date.now()}`);
+  const directory = kind === 'psd' ? runtime.psd : kind === 'png' ? runtime.png : runtime.jpg;
+  let candidate = join(directory, `${stem}${extension}`); let version = 1;
+  while (existsSync(candidate)) candidate = join(directory, `${stem}_${String(version++).padStart(3, '0')}${extension}`);
+  return candidate;
+}
 
 async function parseBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -76,21 +85,21 @@ export async function handlePhotoshopApi(req: IncomingMessage, res: ServerRespon
     }
     case 'save-psd': {
       const { filePath, docId } = body;
-      const jsx = (docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n') + jsxSavePsd(filePath);
+      const jsx = (docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n') + jsxSavePsd(exportPath(filePath, 'psd'));
       const result = await runJsx(jsx);
       json(res, result);
       return true;
     }
     case 'save-png': {
       const { filePath, docId } = body;
-      const jsx = (docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n') + jsxSavePng(filePath);
+      const jsx = (docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n') + jsxSavePng(exportPath(filePath, 'png'));
       const result = await runJsx(jsx);
       json(res, result);
       return true;
     }
     case 'save-jpeg': {
       const { filePath, quality, docId } = body;
-      const jsx = (docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n') + jsxSaveJpeg(filePath, quality || 11);
+      const jsx = (docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n') + jsxSaveJpeg(exportPath(filePath, 'jpg'), quality || 11);
       const result = await runJsx(jsx);
       json(res, result);
       return true;

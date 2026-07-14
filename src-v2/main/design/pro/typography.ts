@@ -4,12 +4,9 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { log } from '../../logger';
+import { createStoragePaths } from '../../storage/storagePaths.mjs';
 
 // Defer Electron import — may not be available in test environment
-let electronApp: any = null;
-try {
-  electronApp = require('electron')?.app ?? null;
-} catch { /* not in Electron */ }
 
 export interface FontInfo {
   family: string;
@@ -72,10 +69,7 @@ const SYSTEM_FONT_DIRS = [
 ];
 
 function getAppFontDir(): string {
-  if (electronApp && typeof electronApp.getPath === 'function') {
-    return join(electronApp.getPath('userData'), 'Fonts');
-  }
-  return join(process.env.LOCALAPPDATA || '', 'SNHS-Poster-Agent', 'Fonts');
+  return createStoragePaths().cacheFonts;
 }
 
 const PREFERRED_PAIRINGS: Omit<FontPairing, 'display' | 'body' | 'fallbackDisplay' | 'fallbackBody' | 'roles'>[] = [

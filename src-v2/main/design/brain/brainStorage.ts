@@ -9,19 +9,10 @@ import { existsSync } from 'node:fs';
 import type { TrainingRecord, DesignPlan, PreferencePair, ApprovalState, RejectionReason, AssetManifest } from './brainTypes';
 import { BRAIN_VERSION } from './brainTypes';
 
-const BRAIN_RELATIVE = 'poster-brain';
-
 async function getBrainRoot(): Promise<string> {
-  try {
-    const { getStorageManager } = await import('../../storage/storage-manager');
-    const mgr = await getStorageManager();
-    const paths = mgr.getPaths();
-    return paths.getPosterBrainDirectory();
-  } catch {
-    const { join: pJoin } = await import('node:path');
-    const { app } = await import('electron');
-    return pJoin(app.getPath('documents'), 'SNHS SMART POSTER AGENT', BRAIN_RELATIVE);
-  }
+  const { getStorageManager } = await import('../../storage/storage-manager');
+  const mgr = await getStorageManager();
+  return mgr.getPaths().getPosterBrainDirectory();
 }
 
 async function categoryDir(category: string): Promise<string> {

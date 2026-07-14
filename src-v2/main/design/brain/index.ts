@@ -13,7 +13,7 @@
 //   Scores rendered posters against 14 human-design criteria.
 //
 // Supporting modules:
-//   brainStorage — Dataset persistence on E:\AI AGENTS\poster-brain\
+//   brainStorage — Dataset persistence under the configured root at poster-brain/
 //   brainRetrieval — Similar-poster search across the approved library
 //   brainFeedback — Approve/reject/compare/correct controls
 //   brainPipeline — Orchestrates all three layers end-to-end

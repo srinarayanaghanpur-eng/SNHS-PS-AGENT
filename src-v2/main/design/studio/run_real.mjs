@@ -5,9 +5,11 @@ import { derivePalette, typographyPairing } from './theme.mjs';
 import { composeHero } from './family_hero.mjs';
 import { renderPng } from './engine.mjs';
 import { analysePhoto, keyWhiteToAlpha } from './photoPipeline.mjs';
+import { createStoragePaths } from '../../storage/storagePaths.mjs';
 
-const assetDir = process.argv[2] || '/sessions/funny-happy-sagan/mnt/ASSETS';
-const outDir = resolve(process.argv[3] || './studio-output-real');
+const runtime = createStoragePaths();
+const assetDir = process.argv[2] || runtime.assetsEventPhotos;
+const outDir = resolve(process.argv[3] || join(runtime.acceptance, `studio-real-${Date.now()}`));
 const pyDir = process.argv[4] || new URL('.', import.meta.url).pathname;
 mkdirSync(outDir, { recursive: true });
 

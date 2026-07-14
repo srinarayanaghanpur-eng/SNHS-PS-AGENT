@@ -12,8 +12,8 @@
 // clear, recoverable error instead of crashing.
 
 import { join } from 'node:path';
-import { app } from 'electron';
 import { log } from '../logger';
+import { getStoragePaths } from '../storage';
 
 export interface BrowserLaunch {
   ok: boolean;
@@ -34,7 +34,7 @@ export interface Candidate {
 
 function profileDir(): string {
   // Dedicated profile inside app data — never the user's personal Chrome data.
-  return join(app.getPath('userData'), 'assistant-browser-profile');
+  return join(getStoragePaths().getCacheDirectory(), 'assistant-browser-profile');
 }
 
 async function loadPlaywright(): Promise<any | null> {

@@ -8,7 +8,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { atomicJson, baseFolder } from '../storage';
+import { atomicJson, getStoragePaths } from '../storage';
 import type { ActionPlan, ExecutionResult } from './types';
 
 export interface ActivityEntry {
@@ -34,7 +34,7 @@ export interface AssistantSession {
 }
 
 function sessionPath(id: string): string {
-  return join(baseFolder(), 'Projects', 'assistant-sessions', `${id}.json`);
+  return join(getStoragePaths().getHistoryDirectory(), 'assistant-sessions', `${id}.json`);
 }
 
 export class SessionStore {

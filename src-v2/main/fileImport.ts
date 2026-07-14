@@ -93,10 +93,11 @@ export async function importReferenceFile(input: unknown, jobsRoot: string): Pro
   const jobId = `import-${randomUUID()}`;
   const jobDirectory = join(resolve(jobsRoot), jobId);
   if (!isWithin(jobsRoot, jobDirectory)) throw new ImportError('IMPORT_PATH_TRAVERSAL', 'Unsafe job path rejected.');
-  await mkdir(jobDirectory, { recursive: true });
+  const inputDirectory = join(jobDirectory, 'input');
+  await mkdir(inputDirectory, { recursive: true });
   const filename = safeFilename(basename(sourcePath));
-  const copiedPath = join(jobDirectory, filename);
-  if (!isWithin(jobDirectory, copiedPath)) throw new ImportError('IMPORT_PATH_TRAVERSAL', 'Unsafe destination path rejected.');
+  const copiedPath = join(inputDirectory, filename);
+  if (!isWithin(inputDirectory, copiedPath)) throw new ImportError('IMPORT_PATH_TRAVERSAL', 'Unsafe destination path rejected.');
   await copyFile(sourcePath, copiedPath);
 
   const result = importedFileSchema.parse({ jobId, path: copiedPath, filename, extension, size: sourceInfo.size, ...measured });

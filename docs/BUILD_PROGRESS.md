@@ -30,7 +30,7 @@ Status: passed (2026-07-11).
 ### Phase 2 transport replacement evidence
 
 - Adopted transport: `photoshop/smoke-test-dojavascript.vbs`, using COM `DoJavaScript` with `$.evalFile(new File(...))`; it never calls `DoJavaScriptFile`.
-- Test command: `cscript.exe //Nologo "C:\Users\ADMIN\Desktop\SNHS-PS-AGENT-main\photoshop\smoke-test-dojavascript.vbs" "C:\Users\ADMIN\Desktop\SNHS-PS-AGENT-main\photoshop\smoke-test.jsx"`.
+- Test command (from the repository root): `cscript.exe //Nologo photoshop\smoke-test-dojavascript.vbs photoshop\smoke-test.jsx`.
 - Test started: `2026-07-11T15:22:28.4798348+05:30`. The bridge attached using `GetObject`, set Photoshop visible, and `DoJavaScript` succeeded on attempt 1. VBS exit code: 0.
 - Fresh result JSON: 279 bytes, modified `2026-07-11T15:22:31.2274888+05:30`, with `success: true` and stage `completed`.
 - Fresh PSD: `smoke-output/SNHS_AUTOMATION_TEST.psd`, 153,489 bytes, modified `2026-07-11T15:22:30.9272900+05:30`.

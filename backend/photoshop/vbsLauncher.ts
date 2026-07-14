@@ -2,6 +2,9 @@ import { execSync, exec } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { log } from '../../src/utils/logger';
+import { ensureStorageDirectoriesSync } from '../../src-v2/main/storage/storagePaths.mjs';
+
+const runtimeTemp = ensureStorageDirectoriesSync().cacheTemporary;
 
 const PS_IDS = [
   'Photoshop.Application',
@@ -41,7 +44,7 @@ export function detectPhotoshop(): PsDetection {
 }
 
 function runVbs(script: string): string {
-  const tmpFile = join(require('os').tmpdir(), `_ps_${Date.now()}.vbs`);
+  const tmpFile = join(runtimeTemp, `_ps_${Date.now()}.vbs`);
   try {
     writeFileSync(tmpFile, script, 'utf-8');
     return execSync(`cscript //Nologo "${tmpFile}"`, { encoding: 'utf-8', timeout: 15000 });
@@ -51,7 +54,7 @@ function runVbs(script: string): string {
 }
 
 export function executeJsx(jsxCode: string): string {
-  const tmpDir = require('os').tmpdir();
+  const tmpDir = runtimeTemp;
   const jsxFile = join(tmpDir, `_ps_${Date.now()}.jsx`);
   const vbsFile = join(tmpDir, `_ps_${Date.now()}.vbs`);
   try {
@@ -83,7 +86,7 @@ export function executeJsx(jsxCode: string): string {
 
 export function executeJsxAsync(jsxCode: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const tmpDir = require('os').tmpdir();
+    const tmpDir = runtimeTemp;
     const jsxFile = join(tmpDir, `_ps_${Date.now()}.jsx`);
     const vbsFile = join(tmpDir, `_ps_${Date.now()}.vbs`);
     try {

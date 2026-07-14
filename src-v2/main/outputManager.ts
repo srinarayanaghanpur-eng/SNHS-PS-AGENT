@@ -1,6 +1,6 @@
 import { copyFile, mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { baseFolder } from './storage';
+import { getStoragePaths } from './storage';
 import { generateBaseName, formatDateForFilename, posterTypeFromCategory, shortNameFromSchool, templateShortName, safeFilename } from '../shared/outputNaming';
 
 export interface OutputPaths {
@@ -11,10 +11,6 @@ export interface OutputPaths {
   jpgPath?: string;
   jsonPath: string;
   version: number;
-}
-
-function outputsRoot(): string {
-  return join(baseFolder(), 'outputs');
 }
 
 function yearMonth(date: Date): { year: string; month: string } {
@@ -39,22 +35,23 @@ export async function resolveOutputPaths(
   const { year, month } = yearMonth(posterDate);
 
   let version = 1;
-  const outputRoot = outputsRoot();
+  const psdRoot = getStoragePaths().getOutputsPsdDirectory();
+  const pngRoot = getStoragePaths().getOutputsPngDirectory();
+  const jpgRoot = getStoragePaths().getOutputsJpgDirectory();
 
-  const psdDir = join(outputRoot, 'psd', shortForm, year, month);
-  const pngDir = join(outputRoot, 'png', shortForm, year, month);
-  const jpgDir = join(outputRoot, 'jpg', shortForm, year, month);
+  const psdDir = join(psdRoot, shortForm, year, month);
+  const pngDir = join(pngRoot, shortForm, year, month);
+  const jpgDir = join(jpgRoot, shortForm, year, month);
 
   let existing: string[] = [];
   try { existing = await readdir(psdDir); } catch { }
 
-  const matchPrefix = `${safeBase}_v`;
+  const matchPrefix = `${safeBase}_`;
   const versionedMatch = existing.filter((n) => {
-    if (n === `${safeBase}.psd`) return true;
     if (n.startsWith(matchPrefix)) {
       const rest = n.slice(matchPrefix.length).replace(/\.psd$/, '');
       const num = parseInt(rest, 10);
-      return !isNaN(num) && String(num) === rest;
+      return !isNaN(num) && String(num).padStart(3, '0') === rest;
     }
     return false;
   });
@@ -62,7 +59,6 @@ export async function resolveOutputPaths(
   if (versionedMatch.length > 0) {
     let maxV = 0;
     for (const n of versionedMatch) {
-      if (n === `${safeBase}.psd`) { maxV = Math.max(maxV, 1); continue; }
       const rest = n.slice(matchPrefix.length).replace(/\.psd$/, '');
       const num = parseInt(rest, 10);
       if (!isNaN(num)) maxV = Math.max(maxV, num);
@@ -70,15 +66,15 @@ export async function resolveOutputPaths(
     version = maxV + 1;
   }
 
-  const finalBase = version > 1 ? `${safeBase}_v${version}` : safeBase;
+  const finalBase = `${safeBase}_${String(version).padStart(3, '0')}`;
 
   return {
-    folderPath: join(outputRoot, 'psd', shortForm, year, month),
+    folderPath: psdDir,
     baseName: finalBase,
     psdPath: join(psdDir, `${finalBase}.psd`),
     pngPath: join(pngDir, `${finalBase}.png`),
     jpgPath: join(jpgDir, `${finalBase}.jpg`),
-    jsonPath: join(outputRoot, 'psd', shortForm, year, month, `${finalBase}.json`),
+    jsonPath: join(psdDir, `${finalBase}.json`),
     version,
   };
 }

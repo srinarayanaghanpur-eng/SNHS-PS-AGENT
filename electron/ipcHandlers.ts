@@ -1,9 +1,7 @@
-import { ipcMain, BrowserWindow, dialog, shell, app } from 'electron';
-import { join, dirname, basename } from 'node:path';
-import { homedir } from 'node:os';
+import { ipcMain, BrowserWindow, dialog, shell } from 'electron';
+import { join, basename, extname } from 'node:path';
 import {
-  existsSync, mkdirSync, readFileSync, writeFileSync,
-  unlinkSync, rmSync, copyFileSync, readdirSync, statSync
+  existsSync, readFileSync, unlinkSync, rmSync, readdirSync, statSync
 } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
@@ -13,8 +11,18 @@ import { createWriteStream } from 'node:fs';
 import { detectPhotoshop, executeJsxAsync } from '../backend/photoshop/vbsLauncher';
 import * as jsx from '../backend/photoshop/jsxGenerators';
 import * as storage from '../backend/storage/fileSystemBridge';
+import { assertContained, createStoragePaths, sanitizeFilename } from '../src-v2/main/storage/storagePaths.mjs';
 
-const DATA_DIR = join(homedir(), 'AppData', 'Roaming', 'snhs-poster-agent');
+const runtime = createStoragePaths();
+const DATA_DIR = runtime.root;
+
+function legacyOutputPath(requestedPath: string, kind: 'psd' | 'png' | 'jpg'): string {
+  const folder = kind === 'psd' ? runtime.psd : kind === 'png' ? runtime.png : runtime.jpg;
+  storage.ensureDir(folder);
+  const requestedExtension = extname(requestedPath).toLowerCase();
+  const stem = sanitizeFilename(basename(requestedPath, requestedExtension), `SNHS_Poster_${Date.now()}`);
+  return assertContained(runtime.root, join(folder, `${stem}.${kind}`));
+}
 
 export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
 
@@ -43,16 +51,17 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
     const win = getMainWindow();
     if (!win) return null;
     const result = await dialog.showSaveDialog(win, {
-      defaultPath: options?.defaultPath,
+      defaultPath: (() => {
+        try { return options?.defaultPath ? assertContained(runtime.root, options.defaultPath) : runtime.outputs; }
+        catch { return runtime.outputs; }
+      })(),
       filters: options?.filters,
     });
     if (result.canceled || !result.filePath) return null;
-    return result.filePath;
+    return assertContained(runtime.root, result.filePath);
   });
 
   ipcMain.handle('shell:openPath', async (_event, p: string) => shell.openPath(p));
-
-  ipcMain.handle('app:getPath', (_event, name: string) => app.getPath(name as any));
 
   ipcMain.handle('app:getDataDir', () => DATA_DIR);
 
@@ -88,17 +97,17 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
 
   ipcMain.handle('ps:savePsd', async (_event, { filePath, docId }: { filePath: string; docId?: number }) => {
     const prefix = docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n';
-    return runJsxHandler(prefix + jsx.jsxSavePsd(filePath));
+    return runJsxHandler(prefix + jsx.jsxSavePsd(legacyOutputPath(filePath, 'psd')));
   });
 
   ipcMain.handle('ps:savePng', async (_event, { filePath, docId }: { filePath: string; docId?: number }) => {
     const prefix = docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n';
-    return runJsxHandler(prefix + jsx.jsxSavePng(filePath));
+    return runJsxHandler(prefix + jsx.jsxSavePng(legacyOutputPath(filePath, 'png')));
   });
 
   ipcMain.handle('ps:saveJpeg', async (_event, { filePath, quality = 11, docId }: { filePath: string; quality?: number; docId?: number }) => {
     const prefix = docId ? `var doc = app.documents.getById(${docId});\n` : 'var doc = app.activeDocument;\n';
-    return runJsxHandler(prefix + jsx.jsxSaveJpeg(filePath, quality));
+    return runJsxHandler(prefix + jsx.jsxSaveJpeg(legacyOutputPath(filePath, 'jpg'), quality));
   });
 
   ipcMain.handle('ps:addGroup', async (_event, { name }: { name: string }) => {
@@ -232,9 +241,7 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const buffer = Buffer.from(await response.arrayBuffer());
-      const d = dirname(destPath);
-      if (!existsSync(d)) mkdirSync(d, { recursive: true });
-      writeFileSync(destPath, buffer);
+      storage.writeBinary(destPath, new Uint8Array(buffer));
       return { success: true, path: destPath, bytes: buffer.length };
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -242,7 +249,7 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
   });
 
   // ─── Asset Cache API ─────────────────────────────────────
-  const ASSET_CACHE_DIR = join(homedir(), 'Documents', 'SNHS Smart Poster Agent', 'asset-cache');
+  const ASSET_CACHE_DIR = join(runtime.cache, 'legacy-asset-cache');
 
   ipcMain.handle('assetCache:getCacheRoot', async () => ({ path: ASSET_CACHE_DIR }));
 
@@ -325,8 +332,6 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
 
   ipcMain.handle('fs:writeText', async (_event, { path, content }: { path: string; content: string }) => {
     if (!path) throw new Error('path required');
-    const d = dirname(path);
-    if (!existsSync(d)) mkdirSync(d, { recursive: true });
     storage.writeText(path, content);
     return { success: true };
   });
@@ -340,8 +345,6 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
   ipcMain.handle('fs:writeBinary', async (_event, { path, data }: { path: string; data: string }) => {
     if (!path) throw new Error('path required');
     const bytes = new Uint8Array(Buffer.from(data, 'base64'));
-    const d = dirname(path);
-    if (!existsSync(d)) mkdirSync(d, { recursive: true });
     storage.writeBinary(path, bytes);
     return { success: true, bytes: bytes.length };
   });
@@ -366,9 +369,8 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
 
   ipcMain.handle('fs:copyFile', async (_event, { sourcePath, destDir }: { sourcePath: string; destDir: string }) => {
     const name = basename(sourcePath);
-    storage.ensureDir(destDir);
     const destPath = join(destDir, name);
-    copyFileSync(sourcePath, destPath);
+    storage.copyEntry(sourcePath, destPath);
     return { name, path: destPath };
   });
 }

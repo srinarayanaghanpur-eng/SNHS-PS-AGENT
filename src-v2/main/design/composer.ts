@@ -11,6 +11,7 @@ import { photoLayout, safeArea } from './layout';
 import { composeDailyPrayerEditorial } from './dailyPrayerFamilies';
 import { analyzeBatch } from './photoAnalysis';
 import { critiquePoster, type VisualCritiqueReport } from './visualCritique';
+import { composeForCategory } from './categoryFamilies';
 
 type Emphasis = 'birthday' | 'lively' | 'exam' | 'festival' | 'programme' | 'general';
 
@@ -45,8 +46,8 @@ export function shouldRunCritique(): boolean {
 }
 
 export function composePoster(input: ComposeInput): Plan | Promise<Plan> {
-  if (input.category === 'prayer') return composeDailyPrayerEditorial(input);
-  return composePosterWithAnalysis(input);
+  if (input.category === 'prayer' || input.category === 'daily-prayer') return composeDailyPrayerEditorial(input);
+  return composeForCategory(input);
 }
 
 async function composePosterWithAnalysis(input: ComposeInput): Promise<Plan> {

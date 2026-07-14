@@ -1,8 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
-import { join } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { channels, openPathSchema, pickImagesSchema, smokeRequestSchema } from '../shared/ipc';
 import { initializeStorage, baseFolder, containedPath } from './storage';
-import { getStorageManager } from './storage/storage-manager';
+import { getStorageManager, resetStorageManager, writeConfiguredDataRoot } from './storage/storage-manager';
 import { validateStorageRoot } from './storage/storage-validator';
 import { runPhotoshopSmoke } from './photoshopSmoke';
 import { selectAndImportReference, referenceDialogFilters } from './selectReference';
@@ -15,16 +16,114 @@ import { initProfiles, listProfiles, getProfile, createProfile, updateProfile, d
 import { validatePosterRequest } from './brandKit/validatePoster';
 import { registerAssistantIpc } from './design-assistant/assistant-ipc';
 import { registerGooglePhotosIpc } from './googlePhotos/gp-ipc';
-import { listHistory, deleteHistory, getHistoryById } from './historyStore';
+import { listHistory, deleteHistory, getHistoryById, clearHistoryCache } from './historyStore';
 import { openAssistantWindow, closeAssistantWindow } from './design-assistant/assistant-window';
 import { BRAND_ASSET_KEYS, cropSchema, type BrandAssetKey } from '../shared/brandKit';
 import { z } from 'zod';
-import { open, stat, readFile, readdir } from 'node:fs/promises';
+import { copyFile, mkdir, open, stat, readFile, readdir, utimes } from 'node:fs/promises';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { validateImageFile } from './imageValidation';
 import { readDimensions } from './googlePhotos/imageMeta';
 import { approveRecord, rejectRecord, correctRecord, savePreferencePair, loadRecord, brainStats, listRecordsWithMeta, saveRecord as saveTrainingRecord } from './design/brain/brainStorage';
+import { createStoragePaths, DEFAULT_DATA_ROOT, sanitizeFilename } from './storage/storagePaths.mjs';
+import { photoshopBridge } from './photoshopBridge';
+
+// Keep only the small storage pointer in Electron's original C: userData.
+// Chromium/session/cache/temp data is redirected to the configured data root
+// before a browser window or persistent session can be created.
+const pointerUserData = app.getPath('userData');
+process.env.SNHS_POINTER_USER_DATA ||= pointerUserData;
+const isStorageProbe = process.argv.includes('--storage-probe');
+let bootstrapStorageError: string | null = null;
+
+function configuredRootForElectron(): string {
+  if (process.env.SNHS_AGENT_DATA_ROOT) return process.env.SNHS_AGENT_DATA_ROOT;
+  try {
+    const saved = JSON.parse(readFileSync(join(pointerUserData, 'storage-config.json'), 'utf8')) as { dataRoot?: string; rootPath?: string };
+    return saved.dataRoot || saved.rootPath || DEFAULT_DATA_ROOT;
+  } catch { return DEFAULT_DATA_ROOT; }
+}
+
+function routeElectronRuntimeToDataRoot(): void {
+  const requestedRoot = configuredRootForElectron();
+  const systemDrive = (process.env.SystemDrive || 'C:').toUpperCase();
+  // Even an invalid legacy C: pointer must not make Chromium write to C: while
+  // the storage error is displayed. Use the E: bootstrap path for Electron;
+  // StorageManager still rejects the requested C: root explicitly below.
+  const configuredRoot = requestedRoot.slice(0, 2).toUpperCase() === systemDrive ? DEFAULT_DATA_ROOT : requestedRoot;
+  const drive = configuredRoot.slice(0, 2);
+  if (/^[A-Za-z]:$/.test(drive) && !existsSync(`${drive}\\`)) {
+    throw new Error(`STORAGE_ROOT_UNAVAILABLE: Configured storage drive ${drive} is disconnected or inaccessible.`);
+  }
+  const paths = createStoragePaths(configuredRoot);
+  const electronUserData = join(paths.settings, 'electron-user-data');
+  const electronSession = join(paths.cache, 'electron-session');
+  const electronCache = join(paths.cache, 'electron-cache');
+  const electronTemp = join(paths.cacheTemporary, 'electron');
+  // Set paths before attempting I/O. If a removable drive is disconnected,
+  // Electron keeps targeting that unavailable drive instead of reverting to C:.
+  app.setPath('userData', electronUserData);
+  app.setPath('sessionData', electronSession);
+  app.setPath('cache', electronCache);
+  app.setPath('temp', electronTemp);
+  for (const directory of [electronUserData, electronSession, electronCache, electronTemp, paths.logs]) mkdirSync(directory, { recursive: true });
+  app.setAppLogsPath(paths.logs);
+}
+
+try { routeElectronRuntimeToDataRoot(); }
+catch (error) {
+  bootstrapStorageError = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`STORAGE_BOOTSTRAP_UNAVAILABLE ${bootstrapStorageError}\n`);
+}
 
 let mainWindow: BrowserWindow | null = null;
+
+async function importPickedAsset(source: string, kind: 'photos' | 'logo'): Promise<string> {
+  if (containedPath(source)) return source;
+  const mgr = await getStorageManager();
+  const destinationRoot = kind === 'logo' ? mgr.getPaths().getAssetsSchoolLogosDirectory() : mgr.getPaths().getAssetsEventPhotosDirectory();
+  await mkdir(destinationRoot, { recursive: true });
+  const extension = extname(source).toLowerCase();
+  const stem = sanitizeFilename(basename(source, extension), kind === 'logo' ? 'school-logo' : 'event-photo');
+  const destination = join(destinationRoot, `${stem}-${randomUUID().slice(0, 8)}${extension}`);
+  const sourceInfo = await stat(source);
+  await copyFile(source, destination);
+  await utimes(destination, sourceInfo.atime, sourceInfo.mtime);
+  return destination;
+}
+
+async function initializeStorageWithRecovery(): Promise<void> {
+  for (;;) {
+    try { await initializeStorage(); return; }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const choice = await dialog.showMessageBox({
+        type: 'error',
+        title: 'Storage drive unavailable',
+        message: 'Configured storage is unavailable',
+        detail: `${message}\n\nReconnect the drive, choose another data location, or exit. Heavy files will not be redirected to C:.`,
+        buttons: ['Retry', 'Choose another location', 'Exit'],
+        defaultId: 0,
+        cancelId: 2,
+      });
+      if (choice.response === 2) throw error;
+      if (choice.response === 0) { resetStorageManager(); continue; }
+      const picked = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory', 'promptToCreate'] });
+      if (picked.canceled || !picked.filePaths[0]) continue;
+      const validation = await validateStorageRoot(picked.filePaths[0]);
+      if (!validation.valid) {
+        await dialog.showMessageBox({ type: 'error', title: 'Invalid storage location', message: validation.errors.join('\n') });
+        continue;
+      }
+      await writeConfiguredDataRoot(picked.filePaths[0]);
+      // Electron's own profile paths are selected during bootstrap, so apply a
+      // newly chosen root through a clean relaunch instead of mixing roots.
+      app.relaunch();
+      app.exit(0);
+      await new Promise<void>(() => undefined);
+    }
+  }
+}
 
 async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
@@ -47,20 +146,12 @@ async function createWindow(): Promise<void> {
   if (process.argv.includes('--poster-gate')) {
     // SNHS Daily Prayer Proceedings acceptance payload (README §13): logo, four
     // student photos, birthday section, thought, programme, footer contacts.
-    const desktop = 'C:/Users/ADMIN/Desktop';
-    const shots = 'C:/Users/ADMIN/Pictures/Screenshots';
     const acceptance = {
       category: 'prayer', headline: 'Daily Prayer Proceedings',
       subheadline: 'A meaningful start to the school day',
       message: 'Our students gathered in unity for prayer, reflection and positive thoughts.',
       details: '11/07/2026', variations: 1, exportPng: true, width: 1080, height: 1350,
-      logoPath: `${desktop}/SNHS-PS-AGENT-main/build/icon.png`,
-      photos: [
-        { path: `${desktop}/Untitled-2 copy.jpg`, name: 'Ravi Kumar', className: '8A' },
-        { path: `${shots}/Screenshot 2026-07-10 185402.png`, name: 'Sana Begum', className: '7B' },
-        { path: `${shots}/Screenshot 2026-07-11 160012.png`, name: 'Arjun Rao', className: '9C' },
-        { path: `${shots}/Screenshot 2026-07-11 180136.png`, name: 'Priya Sharma', className: '6A' },
-      ],
+      requestedCompositionFamily: 'premiumEmblematicAssembly', photos: [],
       prayer: {
         day: 'Saturday', prayerTitle: 'Asato Ma Sadgamaya',
         thought: 'Discipline is the bridge between goals and accomplishment.',
@@ -91,16 +182,21 @@ async function createWindow(): Promise<void> {
     try {
       const fs = await import('node:fs/promises');
       const cfg = JSON.parse(await fs.readFile(cfgPath, 'utf8')) as { assets: Record<string, string>; management?: Record<string, unknown>; branding?: Record<string, unknown>; request?: Record<string, unknown> };
+      const configPath = (value: string) => isAbsolute(value) ? value : resolve(dirname(cfgPath), value);
       const profile = await createProfile({ name: 'E2E Brand School', academicYear: '2026–27', phone1: '6300038389', addressLine1: 'Ghanpur (M)', district: 'Jayashankar Bhupalpally District', pin: '506135' });
       if (cfg.branding) await updateProfile(profile.id, { branding: { ...profile.branding, ...cfg.branding } as typeof profile.branding });
       const imported: Record<string, boolean> = {};
       for (const [key, src] of Object.entries(cfg.assets)) {
-        try { await importAsset(profile.id, key as BrandAssetKey, { sourcePath: src }); imported[key] = true; }
+        try { await importAsset(profile.id, key as BrandAssetKey, { sourcePath: configPath(src) }); imported[key] = true; }
         catch (e) { imported[key] = false; out[`import_error_${key}`] = e instanceof Error ? e.message : String(e); }
       }
       out.profileId = profile.id; out.imported = imported;
       const reloaded = await getProfile(profile.id);
       out.assetsInProfile = reloaded ? Object.keys(reloaded.assets) : [];
+      const requestPatch = { ...(cfg.request ?? {}) } as Record<string, unknown>;
+      if (Array.isArray(requestPatch.photos)) {
+        requestPatch.photos = requestPatch.photos.map((photo: any) => ({ ...photo, path: configPath(String(photo.path)) }));
+      }
       const request = {
         category: 'prayer', headline: 'Daily Prayer Proceedings', subheadline: 'A meaningful start to the school day',
         message: 'Our students gathered in unity for prayer and reflection.', details: '13/07/2026', exportPng: true,
@@ -108,7 +204,7 @@ async function createWindow(): Promise<void> {
         management: cfg.management ?? { chairman: { show: true, assetKey: 'chairmanPhoto', name: 'Sri K. Rao', designation: 'Chairman', frame: 'circle' } },
         prayer: { day: 'Monday', prayerTitle: 'Asato Ma Sadgamaya', thought: 'Discipline bridges goals and accomplishment.',
           programme: ['Prayer song', 'Pledge', 'Thought of the day', 'Birthday wishes'], birthdays: [{ name: 'Anush', className: '7B' }] },
-        ...(cfg.request ?? {}),
+        ...requestPatch,
         schoolProfileId: profile.id,
       };
       const result = await generatePoster(request, undefined);
@@ -124,6 +220,14 @@ async function createWindow(): Promise<void> {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
+function showAssistantWindow(): void {
+  openAssistantWindow(
+    join(__dirname, 'preload.js'),
+    join(__dirname, '..', 'dist-v2', 'assistant.html'),
+    join(__dirname, '..', 'dist-v2', 'app-icon.png'),
+  );
+}
+
 function registerIpc(): void {
   ipcMain.handle(channels.bootstrap, async () => {
     const environment = await detectEnvironment();
@@ -133,13 +237,28 @@ function registerIpc(): void {
   ipcMain.handle(channels.importReference, async () => selectAndImportReference(async () => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
     return dialog.showOpenDialog(mainWindow, { properties: ['openFile'], filters: referenceDialogFilters.map((filter) => ({ ...filter, extensions: [...filter.extensions] })) });
-  }, join(baseFolder(), 'Jobs')));
+  }, (await getStorageManager()).getPaths().getJobsDirectory()));
   ipcMain.handle(channels.openPath, async (_event, input) => {
     const { path } = openPathSchema.parse(input);
     if (!containedPath(path)) throw new Error('PATH_OUTSIDE_APP_STORAGE');
     return shell.openPath(path);
   });
-  ipcMain.handle(channels.generatePoster, async (event, input) => generatePoster(posterRequestSchema.parse(input), event.sender));
+  ipcMain.handle(channels.generatePoster, async (event, input) => {
+    const request = posterRequestSchema.parse(input);
+    if (request.category !== 'prayer' && request.category !== 'daily-prayer') {
+      return generatePoster(request, event.sender);
+    }
+    const created = await photoshopBridge.createDailyPrayerPoster(() => generatePoster(request, event.sender));
+    if (!created.success || !created.data) {
+      throw new Error(`${created.errorCode || 'DAILY_PRAYER_CREATE_FAILED'}: ${created.message}${created.technicalDetails ? ` (${created.technicalDetails})` : ''}`);
+    }
+    const opened = await photoshopBridge.openDocument(created.data.psdPath);
+    if (!opened.success) {
+      throw new Error(`${opened.errorCode || 'PSD_OPEN_FAILED'}: ${opened.message}${opened.technicalDetails ? ` (${opened.technicalDetails})` : ''}`);
+    }
+    showAssistantWindow();
+    return { ...created.data, photoshopOpen: opened };
+  });
   ipcMain.handle(channels.analyzeActivePsd, async () => analyzeActivePsd());
 
   // ── Live Design Assistant (additive) ──
@@ -147,10 +266,7 @@ function registerIpc(): void {
   // ── Google Photos connector (additive) ──
   registerGooglePhotosIpc();
   ipcMain.handle(channels.assistantOpen, async () => {
-    const preload = join(__dirname, 'preload.js');
-    const html = join(__dirname, '..', 'dist-v2', 'assistant.html');
-    const icon = join(__dirname, '..', 'dist-v2', 'app-icon.png');
-    openAssistantWindow(preload, html, icon);
+    showAssistantWindow();
     return { ok: true };
   });
   ipcMain.handle(channels.assistantClose, async () => { closeAssistantWindow(); return { ok: true }; });
@@ -161,8 +277,10 @@ function registerIpc(): void {
       properties: kind === 'photos' ? ['openFile', 'multiSelections'] : ['openFile'],
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'psd'] }],
     });
-    const images = await Promise.all(picked.filePaths.map(async (path) => {
-      const check = await validateImageFile(path);
+    const images = await Promise.all(picked.filePaths.map(async (sourcePath) => {
+      const check = await validateImageFile(sourcePath);
+      if (!check.ok) return null;
+      const path = await importPickedAsset(sourcePath, kind);
       const info = await stat(path).catch(() => null);
       let width = 0; let height = 0;
       if (check.ok && check.format) {
@@ -177,7 +295,8 @@ function registerIpc(): void {
       }
       return { path, width, height, bytes: info?.size ?? 0 };
     }));
-    return { canceled: picked.canceled, paths: picked.filePaths, images };
+    const accepted = images.filter((image): image is NonNullable<typeof image> => image !== null);
+    return { canceled: picked.canceled, paths: accepted.map((image) => image.path), images: accepted };
   });
 
   // ── Brand kit / school profiles ──────────────────────────────────────────
@@ -224,7 +343,13 @@ function registerIpc(): void {
   // ── Storage ──
   ipcMain.handle(channels.getStorageSettings, async () => {
     const mgr = await getStorageManager();
-    return { root: mgr.getStorageRoot(), usage: await mgr.getStorageUsage() };
+    const paths = mgr.getPaths();
+    return {
+      root: mgr.getStorageRoot(),
+      validation: await validateStorageRoot(mgr.getStorageRoot()),
+      paths: { psd: paths.getOutputsPsdDirectory(), png: paths.getOutputsPngDirectory(), jpg: paths.getOutputsJpgDirectory(), jobs: paths.getJobsDirectory() },
+      usage: await mgr.getStorageUsage(),
+    };
   });
   ipcMain.handle(channels.chooseStorageRoot, async () => {
     if (!mainWindow) return { canceled: true };
@@ -255,11 +380,28 @@ function registerIpc(): void {
     } else {
       await mgr.setStorageRoot(newRoot, false);
     }
+    clearHistoryCache();
     return { ok: true, plan };
   });
   ipcMain.handle(channels.openStorageRoot, async () => {
     const mgr = await getStorageManager();
     return shell.openPath(mgr.getStorageRoot());
+  });
+  ipcMain.handle(channels.openStorageFolder, async (_e, input) => {
+    const { kind } = z.object({ kind: z.enum(['root', 'psd', 'png', 'jpg', 'jobs']) }).parse(input);
+    const mgr = await getStorageManager();
+    const paths = mgr.getPaths();
+    const target = kind === 'root' ? mgr.getStorageRoot()
+      : kind === 'psd' ? paths.getOutputsPsdDirectory()
+        : kind === 'png' ? paths.getOutputsPngDirectory()
+          : kind === 'jpg' ? paths.getOutputsJpgDirectory() : paths.getJobsDirectory();
+    return shell.openPath(target);
+  });
+  ipcMain.handle(channels.resetStorageRoot, async () => {
+    const mgr = await getStorageManager();
+    await mgr.resetToDefault();
+    clearHistoryCache();
+    return { ok: true, root: mgr.getStorageRoot(), usage: await mgr.getStorageUsage() };
   });
   ipcMain.handle(channels.getStorageUsage, async () => {
     const mgr = await getStorageManager();
@@ -362,6 +504,7 @@ function registerIpc(): void {
   });
   ipcMain.handle(channels.openFileLocation, async (_e, input) => {
     const { filePath } = z.object({ filePath: z.string() }).parse(input);
+    if (!containedPath(filePath)) throw new Error('PATH_OUTSIDE_APP_STORAGE');
     return shell.showItemInFolder(filePath);
   });
   // ── History ──
@@ -382,24 +525,41 @@ function registerIpc(): void {
   });
 }
 
-installCrashHandlers();
-// A second GUI instance focuses the first instead of racing it for job storage
-// and blocking installer updates. CLI gates are exempt so tests can run while
-// the app is open.
-const isGateRun = process.argv.some((a) => a.endsWith('-gate'));
-if (!isGateRun && !app.requestSingleInstanceLock()) {
-  app.quit();
-} else if (!isGateRun) {
-  app.on('second-instance', () => {
-    if (mainWindow) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); }
+if (bootstrapStorageError) {
+  const payload = { success: false, error: bootstrapStorageError, fallbackUsed: false };
+  if (isStorageProbe) process.stdout.write(`V2_STORAGE_PROBE=${JSON.stringify(payload)}\n`);
+  else dialog.showErrorBox('Storage drive unavailable', `${bootstrapStorageError}\n\nReconnect the configured drive and restart. SNHS did not redirect runtime data to C:.`);
+  app.exit(2);
+} else {
+  installCrashHandlers();
+  // A second GUI instance focuses the first instead of racing it for job storage
+  // and blocking installer updates. CLI gates are exempt so tests can run while
+  // the app is open.
+  const isGateRun = process.argv.some((a) => a.endsWith('-gate')) || isStorageProbe;
+  if (!isGateRun && !app.requestSingleInstanceLock()) {
+    app.quit();
+  } else if (!isGateRun) {
+    app.on('second-instance', () => {
+      if (mainWindow) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); }
+    });
+  }
+  registerIpc();
+  app.whenReady().then(async () => {
+    try {
+      await initializeStorageWithRecovery();
+      await initProfiles();
+      log('INFO', 'app.ready', { packaged: app.isPackaged, version: app.getVersion(), storageRoot: baseFolder() });
+      await createWindow();
+    } catch (error) {
+      if (isStorageProbe) {
+        process.stdout.write(`V2_STORAGE_PROBE=${JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error), fallbackUsed: false })}\n`);
+        app.exit(2);
+        return;
+      }
+      await dialog.showMessageBox({ type: 'error', title: 'SNHS Smart Poster Agent', message: 'The application cannot start without a writable data location.', detail: error instanceof Error ? error.message : String(error) });
+      app.quit();
+    }
   });
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 }
-registerIpc();
-app.whenReady().then(async () => {
-  await initializeStorage();
-  await initProfiles();
-  log('INFO', 'app.ready', { packaged: app.isPackaged, version: app.getVersion() });
-  await createWindow();
-});
-app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

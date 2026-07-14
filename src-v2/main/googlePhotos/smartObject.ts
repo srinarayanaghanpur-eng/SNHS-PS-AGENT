@@ -4,8 +4,8 @@
 // the same pathway the poster generator and smoke test use — no new transport.
 
 import { join } from 'node:path';
-import { app } from 'electron';
 import { runJsx } from '../design-assistant/ps-transport';
+import { createJobWorkspace } from '../storage';
 
 export interface SmartObjectPlacement { path: string; layerName: string }
 export interface PlaceResult { placed: string[]; skipped: { name: string; reason: string }[] }
@@ -44,7 +44,7 @@ out.encoding='UTF-8'; out.open('w'); out.write(JSON.stringify(result)); out.clos
 
 export async function placeAsSmartObjects(placements: SmartObjectPlacement[]): Promise<PlaceResult> {
   if (placements.length === 0) return { placed: [], skipped: [] };
-  const outDir = join(app.getPath('temp'), 'snhs-gp-place', String(Date.now()));
+  const outDir = (await createJobWorkspace(`google-photos-place-${Date.now()}`)).output;
   const jsxPath = join(outDir, 'place-smart-objects.jsx');
   const { raw } = await runJsx<{ success: boolean; error?: string; placed: string[]; skipped: { name: string; reason: string }[] }>({
     outputDir: outDir, jsxPath, jsxSource: buildJsx(placements, outDir),

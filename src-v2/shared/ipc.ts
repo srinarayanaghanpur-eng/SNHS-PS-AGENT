@@ -27,6 +27,13 @@ export const channels = {
   assistantClose: 'v2:assistant-close',
   assistantReadState: 'v2:assistant-read-state',
   assistantReadActiveLayer: 'v2:assistant-read-active-layer',
+  photoshopStatus: 'v2:photoshop-status',
+  photoshopLaunch: 'v2:photoshop-launch',
+  assistantSelectPsd: 'v2:assistant-select-psd',
+  assistantOpenRecentPsd: 'v2:assistant-open-recent-psd',
+  assistantQuickOperation: 'v2:assistant-quick-operation',
+  assistantParseCommand: 'v2:assistant-parse-command',
+  assistantExportPng: 'v2:assistant-export-png',
   assistantCommand: 'v2:assistant-command',
   assistantApplyPlan: 'v2:assistant-apply-plan',
   assistantUndo: 'v2:assistant-undo',
@@ -48,6 +55,8 @@ export const channels = {
   estimateMigration: 'v2:estimate-migration',
   migrateStorage: 'v2:migrate-storage',
   openStorageRoot: 'v2:open-storage-root',
+  openStorageFolder: 'v2:open-storage-folder',
+  resetStorageRoot: 'v2:reset-storage-root',
   getStorageUsage: 'v2:get-storage-usage',
   clearCache: 'v2:clear-cache',
   clearTemp: 'v2:clear-temp',
@@ -101,6 +110,13 @@ export const gpPlaceSchema = z.object({
 
 // Design Assistant IPC payload schemas (all inputs validated in main).
 export const assistantCommandSchema = z.object({ command: z.string().trim().min(1).max(2000), liveApply: z.boolean().optional() }).strict();
+export const assistantQuickOperationSchema = z.discriminatedUnion('operation', [
+  z.object({ operation: z.literal('move'), deltaX: z.number().min(-10_000).max(10_000), deltaY: z.number().min(-10_000).max(10_000) }).strict(),
+  z.object({ operation: z.literal('resize'), scalePercent: z.number().min(1).max(1000) }).strict(),
+  z.object({ operation: z.literal('centre'), horizontal: z.boolean(), vertical: z.boolean() }).strict(),
+  z.object({ operation: z.literal('setText'), text: z.string().max(2000) }).strict(),
+  z.object({ operation: z.enum(['hide', 'show', 'lock', 'unlock']) }).strict(),
+]);
 export const assistantSelectLayerSchema = z.object({ layerId: z.number().int() }).strict();
 export const assistantSearchSchema = z.object({ query: z.string().trim().min(1).max(200) }).strict();
 export const assistantDownloadSchema = z.object({ url: z.string().url(), source: z.string().max(200), license: z.string().max(200).optional() }).strict();
@@ -156,12 +172,27 @@ export const schoolOverrideSchema = z.object({
   showLead: z.boolean().optional(),
 }).strict();
 
+export const contentBlockSchema = z.object({
+  role: z.string().max(60),
+  text: z.string().max(2000).optional(),
+  imagePath: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+}).strict();
+
 export const posterRequestSchema = z.object({
-  category: z.enum(['prayer','birthday','dance','karate','sports','examination','achievement','festival','holiday','admissions','hiring','custom']),
+  category: z.enum(['prayer','birthday','dance','karate','sports','examination','achievement','festival','holiday','admissions','hiring','custom',
+    'daily-prayer','admissions-open','school-reopening','holiday-notice','birthday-wishes','student-achievement',
+    'award-congratulations','exam-notice','results-announcement','fee-notice','transport-notice',
+    'teacher-recruitment','staff-announcement','festival-greetings','national-day','sports-event',
+    'cultural-event','parent-meeting','educational-awareness','health-camp','competition',
+    'educational-quote','general-announcement','social-media-promo'
+  ]),
   headline: z.string().trim().min(1).max(100),
-  subheadline: z.string().trim().max(160),
-  message: z.string().trim().max(600),
-  details: z.string().trim().max(180),
+  subheadline: z.string().trim().max(160).optional().default(''),
+  message: z.string().trim().max(600).optional().default(''),
+  details: z.string().trim().max(180).optional().default(''),
+  // ── Generic content blocks (category-agnostic) ──
+  contentBlocks: z.array(contentBlockSchema).max(32).optional(),
   // ── design-engine extensions (all optional; old callers keep working) ──
   presetId: z.string().max(60).optional(),
   venue: z.string().trim().max(120).optional(),
@@ -181,10 +212,7 @@ export const posterRequestSchema = z.object({
   management: z.object({ chairman: managementPersonSchema.optional(), principal: managementPersonSchema.optional() }).optional(),
   // ── pro design engine ──
   useProEngine: z.boolean().optional(),
-  requestedCompositionFamily: z.enum([
-    'fullBleedAssemblyEditorial', 'asymmetricStudentHero', 'editorialPhotoSplit',
-    'layeredPrayerCollage', 'premiumEmblematicAssembly', 'magazineProgrammeLayout',
-  ]).optional(),
+  requestedCompositionFamily: z.string().optional(),
   // The sandboxed renderer sends the exact plan displayed in Preview. The main
   // process verifies its hash and renders this object without rebuilding it.
   designPlan: z.unknown().optional(),
@@ -209,6 +237,7 @@ export interface PosterGenerationResult {
   // kept for backward compatibility with the old single-output shape
   psdPath: string; jpgPath?: string; pngPath?: string;
   designPlanPath?: string; renderLogPath?: string; previewPath?: string; finalPath?: string;
+  jobDirectory?: string; storageRoot?: string;
   renderLog?: Record<string, unknown>;
 }
 export interface PosterProgressEvent { jobId: string; stage: number; label: string; variation?: number }

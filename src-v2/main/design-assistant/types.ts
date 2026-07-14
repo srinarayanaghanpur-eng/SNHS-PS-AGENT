@@ -50,6 +50,8 @@ export interface SceneLayer {
 
 export interface SceneDocument {
   name: string;
+  path: string;
+  saved: boolean;
   width: number;
   height: number;
   resolution: number;

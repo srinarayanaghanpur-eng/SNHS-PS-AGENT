@@ -30,6 +30,10 @@ export async function validatePosterRequest(request: PosterRequest, profile: Sch
   const address = request.schoolOverride?.address ?? (profile ? formatAddress(profile) : '');
   if (!address.trim()) add('address', 'School address or location is required.');
 
+  const isDailyPrayer = request.category === 'prayer' || request.category === 'daily-prayer';
+  const phone = request.schoolOverride?.phone ?? profile?.phone1 ?? '';
+  if (isDailyPrayer && !phone.trim()) add('phone', 'Phone number is required for a Daily Prayer poster.');
+
   if (!request.details?.trim()) add('date', 'Poster date is required.');
 
   const hasPrayerContent = Boolean(
@@ -38,13 +42,33 @@ export async function validatePosterRequest(request: PosterRequest, profile: Sch
   );
   if (!hasPrayerContent) add('prayerContent', 'At least one piece of prayer content (thought, prayer, programme, news…) is required.');
 
-  // Logos are optional. The generator validates any saved path and drops an
-  // unavailable optional asset so the layout rebalances without an empty frame.
-  const logoAsset = profile?.assets.mainLogo;
-  if (logoAsset) await pathUsable(logoAsset.path);
+  if (isDailyPrayer) {
+    if (!request.prayer?.day?.trim()) add('weekday', 'Weekday is required.');
+    if (!request.message?.trim()) add('quote', 'Quote is required.');
+    if (!request.prayer?.programme?.length || !request.prayer.programme.some((item) => item.trim())) {
+      add('programme', 'At least one programme item is required.');
+    }
+
+    const mainLogo = profile?.assets.mainLogo ?? (request.logoPath ? { path: request.logoPath } : undefined);
+    if (!mainLogo) add('schoolLogo', 'School logo is required for a Daily Prayer poster.');
+    else if (!(await pathUsable(mainLogo.path))) add('schoolLogo', `The school logo file is missing or unreadable: ${mainLogo.path}`);
+
+    const leadLogo = profile?.assets.leadLogo;
+    if (!leadLogo) add('leadLogo', 'LEAD logo is required for a Daily Prayer poster.');
+    else if (!(await pathUsable(leadLogo.path))) add('leadLogo', `The LEAD logo file is missing or unreadable: ${leadLogo.path}`);
+
+    const prayerPhotoPaths = [profile?.assets.assemblyPhoto?.path, ...(request.photos ?? []).map((photo) => photo.path)]
+      .filter((path): path is string => Boolean(path));
+    if (prayerPhotoPaths.length === 0) add('prayerPhoto', 'School prayer photo is required for a Daily Prayer poster.');
+    else if (!(await Promise.all(prayerPhotoPaths.map(pathUsable))).some(Boolean)) add('prayerPhoto', 'No uploaded school prayer photo is readable.');
+  } else {
+    // Other poster categories retain their existing optional-logo behaviour.
+    const logoAsset = profile?.assets.mainLogo;
+    if (logoAsset) await pathUsable(logoAsset.path);
+  }
 
   // LEAD logo, when LEAD branding is on.
-  if ((request.schoolOverride?.showLead ?? profile?.branding.showLead) && profile?.assets.leadLogo && !(await pathUsable(profile.assets.leadLogo.path))) {
+  if (!isDailyPrayer && (request.schoolOverride?.showLead ?? profile?.branding.showLead) && profile?.assets.leadLogo && !(await pathUsable(profile.assets.leadLogo.path))) {
     add('leadLogo', `The LEAD logo file is missing or unreadable: ${profile.assets.leadLogo.path}`);
   }
 

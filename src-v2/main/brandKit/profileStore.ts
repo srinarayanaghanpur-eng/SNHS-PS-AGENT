@@ -1,12 +1,11 @@
-// Persistent school-profile / brand-kit store. Profiles live in a JSON index at
-// Documents/SNHS Smart Poster Agent/BrandKits/profiles.json; each profile owns a
-// folder BrandKits/{id}/ with asset subfolders. Only metadata + file paths are
+// Persistent school-profile / brand-kit store under the central data root at
+// assets/school-profiles. Each profile owns asset subfolders. Metadata and paths are
 // stored in JSON — never image bytes (§3).
 
 import { mkdir, readFile, readdir, cp, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { atomicJson, baseFolder } from '../storage';
+import { atomicJson, getStoragePaths } from '../storage';
 import { log } from '../logger';
 import {
   ASSET_SUBFOLDER, SNHS_DEFAULT, schoolProfileSchema,
@@ -14,7 +13,7 @@ import {
 } from '../../shared/brandKit';
 import { importAssetFile, type ImportRequest } from './assetImport';
 
-export function brandKitsRoot(): string { return join(baseFolder(), 'BrandKits'); }
+export function brandKitsRoot(): string { return getStoragePaths().getSchoolProfilesDirectory(); }
 export function profileDir(id: string): string { return join(brandKitsRoot(), id); }
 function indexPath(): string { return join(brandKitsRoot(), 'profiles.json'); }
 function defaultPath(): string { return join(brandKitsRoot(), '_default.json'); }

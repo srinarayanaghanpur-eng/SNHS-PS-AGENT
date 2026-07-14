@@ -28,10 +28,12 @@ describe('poster request validation (§9)', () => {
     expect(result.issues.some((i) => i.field === 'prayerContent')).toBe(true);
   });
 
-  it('allows a missing optional school logo so the layout can rebalance', async () => {
+  it('requires the logo, LEAD logo, and prayer photo for Daily Prayer', async () => {
     const result = await validatePosterRequest(request(), profile());
-    expect(result.issues.some((issue) => issue.field === 'mainLogo')).toBe(false);
-    expect(result.ok).toBe(true);
+    expect(result.issues.some((issue) => issue.field === 'schoolLogo')).toBe(true);
+    expect(result.issues.some((issue) => issue.field === 'leadLogo')).toBe(true);
+    expect(result.issues.some((issue) => issue.field === 'prayerPhoto')).toBe(true);
+    expect(result.ok).toBe(false);
   });
 
   it('flags a student photo path that does not exist', async () => {

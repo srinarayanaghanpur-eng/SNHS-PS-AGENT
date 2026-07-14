@@ -1,8 +1,0 @@
-{
-  "available": false,
-  "pass": false,
-  "rejectionCode": "INSUFFICIENT_DISTINCT_PHOTOS",
-  "required": 7,
-  "availableCount": 3,
-  "detail": "A photo-rich acceptance image was not rendered because doing so would require repeated or invented moments."
-}

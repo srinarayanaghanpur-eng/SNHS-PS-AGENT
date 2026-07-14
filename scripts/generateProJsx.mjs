@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates 6 candidate JSX files from the pro design engine for visual inspection in Photoshop.
-// Run: node scripts/generateProJsx.mjs [--outDir ./test-pro-output]
+// Run: node scripts/generateProJsx.mjs [--outDir "E:\\AI AGENTS\\SNHS SMART POSTER AGENT\\test-runs\\pro-jsx"]
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -13,8 +13,9 @@ const require = createRequire(import.meta.url);
 // We need to use the TypeScript source via tsx or esbuild
 // Since the pro modules are in TypeScript, use esbuild to bundle on the fly
 import esbuild from 'esbuild';
+import { createStoragePaths } from '../src-v2/main/storage/storagePaths.mjs';
 
-const outDir = resolve(process.argv[2] || './test-pro-output');
+const outDir = resolve(process.argv[2] || join(createStoragePaths().testRuns, `pro-jsx-${Date.now()}`));
 
 async function main() {
   await mkdir(outDir, { recursive: true });

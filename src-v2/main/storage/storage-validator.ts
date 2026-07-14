@@ -2,6 +2,7 @@ import { access, mkdir, writeFile, unlink, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { sep, resolve, join } from 'node:path';
 import type { ValidationResult } from './storage-types';
+import { app } from 'electron';
 
 const FORBIDDEN_ROOTS = [
   process.env.WINDIR || 'C:\\Windows',
@@ -11,7 +12,6 @@ const FORBIDDEN_ROOTS = [
 ];
 
 function getAppPaths(): string[] {
-  const { app } = require('electron');
   return [
     app.getAppPath(),
     resolve(app.getAppPath(), '..'),
@@ -60,6 +60,11 @@ export async function validateStorageRoot(candidate: string): Promise<Validation
   // Drive existence check
   const drive = resolved.slice(0, 2);
   if (/^[A-Za-z]:$/.test(drive)) {
+    const systemDrive = (process.env.SystemDrive || 'C:').toUpperCase();
+    const testRuntime = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+    if (drive.toUpperCase() === systemDrive && !testRuntime) {
+      errors.push(`Runtime storage cannot use the system drive ${systemDrive}. Choose E: or another data drive.`);
+    }
     try {
       await access(drive + sep, constants.R_OK);
     } catch {

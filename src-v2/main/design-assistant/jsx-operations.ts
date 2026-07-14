@@ -199,12 +199,13 @@ export interface EmitExecuteOptions {
   outputDir: string;
   previewPng: boolean;
   checkpointName: string;
+  createSnapshot?: boolean;
   trueDelete?: boolean;
 }
 
 const PREVIEW_JS = (out: string) => `try{var pf=new File(${jsStr(out)}+'/preview.png');var dup=doc.duplicate('__assist_preview',true);var mx=1200;var sc=Math.min(1,mx/dup.width.value);if(sc<1)dup.resizeImage(new UnitValue(dup.width.value*sc,'px'),new UnitValue(dup.height.value*sc,'px'),null,ResampleMethod.BICUBIC);var po=new PNGSaveOptions();po.compression=7;dup.saveAs(pf,po,true,Extension.LOWERCASE);dup.close(SaveOptions.DONOTSAVECHANGES);preview=pf.fsName;}catch(eP){warn.push('PREVIEW_FAILED:'+eP.message);}`;
 
-function wrapExecute(out: string, checkpointName: string, targetLayerId: number, body: string, previewPng: boolean): string {
+function wrapExecute(out: string, checkpointName: string, targetLayerId: number, body: string, previewPng: boolean, createSnapshot = true): string {
   const outFs = out.replace(/\\/g, '/');
   return `#target photoshop
 (function(){
@@ -219,7 +220,7 @@ if(app.documents.length===0)throw new Error('NO_DOCUMENT_OPEN');
 doc=app.activeDocument;
 app.displayDialogs=DialogModes.NO;
 var prevRuler=app.preferences.rulerUnits;app.preferences.rulerUnits=Units.PIXELS;
-snapshot(${jsStr(checkpointName)});
+${createSnapshot ? `snapshot(${jsStr(checkpointName)});` : ''}
 var L=selectById(${targetLayerId});
 modified.push(${targetLayerId});
 ${body}
@@ -239,7 +240,7 @@ export function emitExecuteJsx(plan: ActionPlan, targetLayerId: number, opts: Em
     if (op.type === 'delete' && opts.trueDelete) return `L.remove();`;
     return emitOperation(op);
   }).join('\n');
-  return wrapExecute(opts.outputDir, opts.checkpointName, targetLayerId, body, opts.previewPng);
+  return wrapExecute(opts.outputDir, opts.checkpointName, targetLayerId, body, opts.previewPng, opts.createSnapshot);
 }
 
 // ── Dedicated background-replacement JSX ────────────────────────────────────

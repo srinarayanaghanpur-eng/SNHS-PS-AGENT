@@ -9,16 +9,18 @@ import { emitStudioJsx } from './jsxEmitter.mjs';
 import { enhanceHeroImage, judgePhotoStory, loadActivitySignals } from './photoJudgement.mjs';
 import { critiqueRenderedPhotoCollage, removeCriticFailures } from './photoCritic.mjs';
 import { STORY_MODES, auditMobileText, selectStoryMode, validateProgrammeCoverage } from './storyModes.mjs';
+import { createStoragePaths } from '../../storage/storagePaths.mjs';
 
-const assetDir = resolve(process.argv[2] || '/sessions/funny-happy-sagan/mnt/ASSETS');
-const outDir = resolve(process.argv[3] || './studio-output-collage2');
-const extraAssetDir = resolve(process.argv[4] || './acceptance-assets');
+const runtime = createStoragePaths();
+const assetDir = resolve(process.argv[2] || runtime.assetsEventPhotos);
+const outDir = resolve(process.argv[3] || join(runtime.acceptance, `studio-collage2-${Date.now()}`));
+const extraAssetDir = resolve(process.argv[4] || runtime.assetsEventPhotos);
 const cropDir = join(outDir, 'crops');
 mkdirSync(outDir, { recursive: true });
 
 const imagePattern = /\.(?:jpe?g|png|webp)$/i;
 const entries = [];
-for (const dir of [assetDir, extraAssetDir]) {
+for (const dir of [...new Set([assetDir, extraAssetDir])]) {
   if (!existsSync(dir)) continue;
   for (const name of readdirSync(dir)) if (imagePattern.test(name)) entries.push({ name, path: join(dir, name), dir });
 }

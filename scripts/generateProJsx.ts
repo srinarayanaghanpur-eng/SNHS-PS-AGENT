@@ -6,8 +6,9 @@ import { join, resolve } from 'node:path';
 import { runProDesignPipeline, legacyToContentInput } from '../src-v2/main/design/pro/orchestrator';
 import { emitJsxFromSceneGraph } from '../src-v2/main/design/pro/jsxEmitterPro';
 import type { ContentInput } from '../src-v2/main/design/pro/nodeFactory';
+import { createStoragePaths } from '../src-v2/main/storage/storagePaths.mjs';
 
-const outDir = resolve(process.argv[2] || './test-pro-output');
+const outDir = resolve(process.argv[2] || join(createStoragePaths().testRuns, `pro-jsx-${Date.now()}`));
 
 async function main() {
   await mkdir(outDir, { recursive: true });

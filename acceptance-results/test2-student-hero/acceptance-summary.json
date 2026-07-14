@@ -1,9 +1,0 @@
-{
-  "test": "test2-student-hero",
-  "selectedFamily": "asymmetricStudentHero",
-  "requestedFamily": "asymmetricStudentHero",
-  "renderer": "immutable-design-plan-jsx",
-  "legacyRendererUsed": false,
-  "planHashesMatch": true,
-  "qualityGateAccepted": true
-}

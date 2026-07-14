@@ -17,7 +17,9 @@
     "desktop:package": "npm run desktop:build && npx electron-builder --win --x64",
     "desktop:installer": "npm run desktop:package",
     "v2:build": "node scripts/build.mjs --v2",
-    "v2:dev": "npm run v2:build && electron electron-v2/main.js"
+    "v2:dev": "npm run v2:build && electron electron-v2/main.js",
+    "storage:migrate": "node scripts/migrateRuntimeData.mjs --execute",
+    "storage:audit": "node scripts/auditRuntimeStorage.mjs"
   },
   "build": {
     "appId": "com.snhs.poster-agent",

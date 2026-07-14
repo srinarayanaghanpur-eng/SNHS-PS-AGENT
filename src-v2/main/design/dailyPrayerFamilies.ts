@@ -1,5 +1,7 @@
 import type { ComposeInput, Plan, PlanGroup, PlanNode, Rect, ResolvedAsset } from './types';
 import { DesignGenerationError } from './designGenerationError';
+import { composeReferenceExactReconstruction } from './referenceExactFamily';
+import type { ReferenceSceneGraph } from './reference/referenceTypes';
 
 export const DAILY_PRAYER_FAMILIES = [
   'fullBleedAssemblyEditorial',
@@ -8,6 +10,7 @@ export const DAILY_PRAYER_FAMILIES = [
   'layeredPrayerCollage',
   'premiumEmblematicAssembly',
   'magazineProgrammeLayout',
+  'referenceExactReconstruction',
 ] as const;
 export type DailyPrayerFamily = typeof DAILY_PRAYER_FAMILIES[number];
 
@@ -38,10 +41,10 @@ const wrap = (value: string, max = 34): string => {
 
 function groups(): Record<string, PlanGroup> {
   return {
-    background: group('00_BACKGROUND_AND_HERO'), depth: group('01_DEPTH_AND_SHAPES'),
-    branding: group('02_SCHOOL_BRANDING'), title: group('03_EDITORIAL_TITLE'),
-    programme: group('04_MORNING_PROGRAMME'), message: group('05_PRAYER_MESSAGE'),
-    footer: group('06_CONTACT_AND_LEAD'),
+    background: group('00_BACKGROUND'), mainPhoto: group('01_MAIN_PHOTO'),
+    overlay: group('02_DARK_OVERLAY'), branding: group('03_SCHOOL_BRANDING'),
+    title: group('04_TITLE'), date: group('05_DATE'), message: group('06_QUOTE'),
+    programme: group('07_PROGRAMME'), footer: group('08_FOOTER'), effects: group('09_EFFECTS'),
   };
 }
 
@@ -120,9 +123,9 @@ function addTitle(ctx: FamilyContext, box: Rect, color: string, align: 'left' | 
 
 function addDateBadge(ctx: FamilyContext, x: number, y: number, darkText = false): void {
   const { input, groups: g, palette: p } = ctx; const day = (input.prayer?.day || 'TODAY').toUpperCase();
-  g.title.nodes.push(polygon('DATE_BADGE', [[x, y], [x + 290, y], [x + 272, y + 62], [x, y + 62]], p.accent));
-  g.title.nodes.push(label('POSTER_DATE', input.details || '', rect(x + 18, y + 15, 184, 30), 23, darkText ? p.ink : p.white, 'left', 'Arial-BoldMT', 17, 1));
-  g.title.nodes.push(label('POSTER_DAY', day, rect(x + 198, y + 15, 70, 30), 18, darkText ? p.ink : p.white, 'right', 'Arial-BoldMT', 14, 1));
+  g.date.nodes.push(polygon('DATE_BADGE', [[x, y], [x + 290, y], [x + 272, y + 62], [x, y + 62]], p.accent));
+  g.date.nodes.push(label('POSTER_DATE', input.details || '', rect(x + 18, y + 15, 184, 30), 23, darkText ? p.ink : p.white, 'left', 'Arial-BoldMT', 17, 1));
+  g.date.nodes.push(label('POSTER_DAY', day, rect(x + 198, y + 15, 70, 30), 18, darkText ? p.ink : p.white, 'right', 'Arial-BoldMT', 14, 1));
 }
 
 function addQuote(ctx: FamilyContext, box: Rect, color: string, accent: string): void {
@@ -167,9 +170,9 @@ function addCompactGrid(ctx: FamilyContext, x: number, y: number, width: number,
 
 function fullBleed(ctx: FamilyContext): void {
   const { W, H, hero, groups: g, palette: p } = ctx;
-  g.background.nodes.push({ kind: 'photo', name: 'HERO_ASSEMBLY_PHOTO', rect: rect(0, 0, W, H), path: hero!.path, mask: 'none', fit: 'cover', focusY: 0.36 });
-  g.depth.nodes.push({ kind: 'gradient', name: 'HERO_DARK_SCRIM', rect: rect(0, 0, W, H), stops: [{ hex: p.ink, position: 0 }, { hex: p.deep, position: 52 }, { hex: p.mid, position: 100 }], angle: 15, opacity: 78 });
-  g.depth.nodes.push(polygon('EDITORIAL_DIAGONAL_FIELD', [[0, 0], [760, 0], [620, H], [0, H]], p.ink, 62));
+  g.mainPhoto.nodes.push({ kind: 'photo', name: 'HERO_ASSEMBLY_PHOTO', rect: rect(0, 0, W, H), path: hero!.path, mask: 'none', fit: 'cover', focusY: 0.36 });
+  g.overlay.nodes.push({ kind: 'gradient', name: 'HERO_DARK_SCRIM', rect: rect(0, 0, W, H), stops: [{ hex: p.ink, position: 0 }, { hex: p.deep, position: 52 }, { hex: p.mid, position: 100 }], angle: 15, opacity: 78 });
+  g.overlay.nodes.push(polygon('EDITORIAL_DIAGONAL_FIELD', [[0, 0], [760, 0], [620, H], [0, H]], p.ink, 62));
   addBranding(ctx, true); addTitle(ctx, rect(62, 155, 620, 180), p.white, 'left', 68); addDateBadge(ctx, 62, 344);
   addQuote(ctx, rect(62, 430, 590, 120), p.paper, p.accent); addTimeline(ctx, 64, 620, 560, 58, p.white); addFooter(ctx, true);
 }
@@ -177,19 +180,19 @@ function fullBleed(ctx: FamilyContext): void {
 function asymmetric(ctx: FamilyContext): void {
   const { W, H, hero, groups: g, palette: p } = ctx;
   g.background.nodes.push({ kind: 'gradient', name: 'ASYMMETRIC_BG', rect: rect(0, 0, W, H), stops: [{ hex: p.deep, position: 0 }, { hex: p.mid, position: 100 }], angle: 120 });
-  g.background.nodes.push({ kind: 'photo', name: 'HERO_STUDENT_PHOTO', rect: rect(W * 0.49, 0, W * 0.51, H), path: hero!.path, mask: 'none', fit: 'cover', focusY: 0.3 });
-  g.depth.nodes.push(polygon('ASYMMETRIC_OVERLAP', [[0, 0], [650, 0], [510, H], [0, H]], p.deep, 96));
-  g.depth.nodes.push(polygon('CORAL_DEPTH_RIBBON', [[430, 0], [540, 0], [400, H], [320, H]], p.accent, 80));
+  g.mainPhoto.nodes.push({ kind: 'photo', name: 'HERO_STUDENT_PHOTO', rect: rect(W * 0.49, 0, W * 0.51, H), path: hero!.path, mask: 'none', fit: 'cover', focusY: 0.3 });
+  g.overlay.nodes.push(polygon('ASYMMETRIC_OVERLAP', [[0, 0], [650, 0], [510, H], [0, H]], p.deep, 96));
+  g.overlay.nodes.push(polygon('CORAL_DEPTH_RIBBON', [[430, 0], [540, 0], [400, H], [320, H]], p.accent, 80));
   addBranding(ctx, true); addTitle(ctx, rect(58, 158, 430, 178), p.white, 'left', 64); addDateBadge(ctx, 58, 340);
   addQuote(ctx, rect(58, 430, 400, 136), p.soft, p.accent); addTimeline(ctx, 58, 640, 400, 57, p.white); addFooter(ctx, true);
 }
 
 function photoSplit(ctx: FamilyContext): void {
   const { W, H, hero, groups: g, palette: p } = ctx; const split = Math.round(W * 0.47);
-  g.background.nodes.push({ kind: 'photo', name: 'HERO_PHOTO_SPLIT', rect: rect(0, 0, split, H), path: hero!.path, mask: 'none', fit: 'cover', focusY: 0.35 });
+  g.mainPhoto.nodes.push({ kind: 'photo', name: 'HERO_PHOTO_SPLIT', rect: rect(0, 0, split, H), path: hero!.path, mask: 'none', fit: 'cover', focusY: 0.35 });
   g.background.nodes.push({ kind: 'gradient', name: 'EDITORIAL_PAPER', rect: rect(split, 0, W - split, H), stops: [{ hex: p.paper, position: 0 }, { hex: p.soft, position: 100 }], angle: 90 });
-  g.depth.nodes.push(polygon('PHOTO_SPLIT_CHEVRON', [[split - 70, 0], [split + 35, 0], [split - 45, H], [split - 125, H]], p.accent, 94));
-  g.depth.nodes.push({ kind: 'gradient', name: 'PHOTO_SPLIT_SCRIM', rect: rect(0, 0, split, H), stops: [{ hex: p.ink, position: 0 }, { hex: p.deep, position: 100 }], angle: 90, opacity: 45 });
+  g.overlay.nodes.push(polygon('PHOTO_SPLIT_CHEVRON', [[split - 70, 0], [split + 35, 0], [split - 45, H], [split - 125, H]], p.accent, 94));
+  g.overlay.nodes.push({ kind: 'gradient', name: 'PHOTO_SPLIT_SCRIM', rect: rect(0, 0, split, H), stops: [{ hex: p.ink, position: 0 }, { hex: p.deep, position: 100 }], angle: 90, opacity: 45 });
   addBranding(ctx, false); addTitle(ctx, rect(split + 55, 150, W - split - 90, 178), p.ink, 'left', 58); addDateBadge(ctx, split + 55, 336, true);
   addQuote(ctx, rect(58, 850, split - 112, 170), p.white, p.accent); addTwoColumnProgramme(ctx, split + 55, 525, W - split - 90, p.ink); addFooter(ctx, true);
 }
@@ -197,11 +200,11 @@ function photoSplit(ctx: FamilyContext): void {
 function collage(ctx: FamilyContext): void {
   const { W, H, hero, secondary, groups: g, palette: p } = ctx;
   const bg = secondary ?? ctx.input.assets?.campusPhoto ?? hero;
-  g.background.nodes.push({ kind: 'photo', name: 'COLLAGE_CAMPUS_HERO', rect: rect(0, 0, W, H), path: bg!.path, mask: 'none', fit: 'cover', focusY: 0.45 });
-  g.depth.nodes.push({ kind: 'gradient', name: 'COLLAGE_COLOR_WASH', rect: rect(0, 0, W, H), stops: [{ hex: p.deep, position: 0 }, { hex: p.mid, position: 100 }], angle: 45, opacity: 76 });
-  g.depth.nodes.push(polygon('COLLAGE_LEFT_PLANE', [[0, 0], [665, 0], [520, 850], [0, 980]], p.deep, 88));
-  g.depth.nodes.push(polygon('COLLAGE_GOLD_SLASH', [[635, 120], [710, 92], [610, 850], [535, 880]], p.accent, 86));
-  g.background.nodes.push({ kind: 'photo', name: 'HERO_STUDENT_COLLAGE', rect: rect(610, 185, 405, 615), path: hero!.path, mask: 'rounded', radius: 54, fit: 'cover', focusY: 0.28, effects: { shadow: { hex: '000000', opacity: 55, distance: 18, size: 36, angle: 120 }, stroke: { hex: p.paper, size: 5, opacity: 90 } } });
+  g.mainPhoto.nodes.push({ kind: 'photo', name: 'COLLAGE_CAMPUS_HERO', rect: rect(0, 0, W, H), path: bg!.path, mask: 'none', fit: 'cover', focusY: 0.45 });
+  g.overlay.nodes.push({ kind: 'gradient', name: 'COLLAGE_COLOR_WASH', rect: rect(0, 0, W, H), stops: [{ hex: p.deep, position: 0 }, { hex: p.mid, position: 100 }], angle: 45, opacity: 76 });
+  g.overlay.nodes.push(polygon('COLLAGE_LEFT_PLANE', [[0, 0], [665, 0], [520, 850], [0, 980]], p.deep, 88));
+  g.overlay.nodes.push(polygon('COLLAGE_GOLD_SLASH', [[635, 120], [710, 92], [610, 850], [535, 880]], p.accent, 86));
+  g.mainPhoto.nodes.push({ kind: 'photo', name: 'HERO_STUDENT_COLLAGE', rect: rect(610, 185, 405, 615), path: hero!.path, mask: 'rounded', radius: 54, fit: 'cover', focusY: 0.28, effects: { shadow: { hex: '000000', opacity: 55, distance: 18, size: 36, angle: 120 }, stroke: { hex: p.paper, size: 5, opacity: 90 } } });
   addBranding(ctx, true); addTitle(ctx, rect(58, 160, 500, 180), p.white, 'left', 63); addDateBadge(ctx, 58, 348);
   addQuote(ctx, rect(58, 440, 470, 140), p.soft, p.accent); addCompactGrid(ctx, 58, 890, W - 116, p.white); addFooter(ctx, true);
 }
@@ -211,15 +214,15 @@ function premiumEmblematic(ctx: FamilyContext): void {
   g.background.nodes.push({ kind: 'gradient', name: 'EMBLEMATIC_BG', rect: rect(0, 0, W, H), stops: [{ hex: p.deep, position: 0 }, { hex: p.mid, position: 60 }, { hex: p.ink, position: 100 }], angle: 90 });
   // Purposeful sunrise and prayer-book emblem: every ellipse/polygon belongs to
   // the focal illustration, never generic decoration.
-  g.depth.nodes.push({ kind: 'ellipse', name: 'FOCAL_SUNRISE_DISC', rect: rect(W / 2 - 122, 178, 244, 244), hex: p.accent, opacity: 94, effects: { glow: { hex: p.accent, opacity: 48, size: 38 } } });
+  g.overlay.nodes.push({ kind: 'ellipse', name: 'FOCAL_SUNRISE_DISC', rect: rect(W / 2 - 122, 178, 244, 244), hex: p.accent, opacity: 94, effects: { glow: { hex: p.accent, opacity: 48, size: 38 } } });
   for (let i = 0; i < 7; i++) {
     const x = W / 2 + (i - 3) * 88;
-    g.depth.nodes.push(polygon(`FOCAL_SUN_RAY_${i + 1}`, [[W / 2 - 18, 330], [W / 2 + 18, 330], [x + 30, 535], [x - 30, 535]], p.accent, 24));
+    g.overlay.nodes.push(polygon(`FOCAL_SUN_RAY_${i + 1}`, [[W / 2 - 18, 330], [W / 2 + 18, 330], [x + 30, 535], [x - 30, 535]], p.accent, 24));
   }
-  g.depth.nodes.push(polygon('FOCAL_OPEN_BOOK_LEFT', [[270, 490], [520, 430], [520, 650], [270, 715], [220, 670]], p.paper, 96));
-  g.depth.nodes.push(polygon('FOCAL_OPEN_BOOK_RIGHT', [[560, 430], [810, 490], [860, 670], [560, 650]], p.white, 96));
-  g.depth.nodes.push(polygon('FOCAL_PRAYER_HAND_LEFT', [[420, 570], [505, 440], [535, 470], [505, 640]], p.soft, 98));
-  g.depth.nodes.push(polygon('FOCAL_PRAYER_HAND_RIGHT', [[575, 440], [660, 570], [575, 640], [545, 470]], p.soft, 98));
+  g.overlay.nodes.push(polygon('FOCAL_OPEN_BOOK_LEFT', [[270, 490], [520, 430], [520, 650], [270, 715], [220, 670]], p.paper, 96));
+  g.overlay.nodes.push(polygon('FOCAL_OPEN_BOOK_RIGHT', [[560, 430], [810, 490], [860, 670], [560, 650]], p.white, 96));
+  g.overlay.nodes.push(polygon('FOCAL_PRAYER_HAND_LEFT', [[420, 570], [505, 440], [535, 470], [505, 640]], p.soft, 98));
+  g.overlay.nodes.push(polygon('FOCAL_PRAYER_HAND_RIGHT', [[575, 440], [660, 570], [575, 640], [545, 470]], p.soft, 98));
   addBranding(ctx, true); addTitle(ctx, rect(85, 650, W - 170, 130), p.white, 'center', 58); addDateBadge(ctx, W / 2 - 145, 785);
   addQuote(ctx, rect(150, 855, W - 300, 92), p.paper, p.accent); addCompactGrid(ctx, 58, 995, W - 116, p.white); addFooter(ctx, true);
 }
@@ -227,9 +230,9 @@ function premiumEmblematic(ctx: FamilyContext): void {
 function magazine(ctx: FamilyContext): void {
   const { W, H, hero, groups: g, palette: p } = ctx;
   g.background.nodes.push({ kind: 'rect', name: 'MAGAZINE_PAPER', rect: rect(0, 0, W, H), hex: p.paper });
-  g.background.nodes.push({ kind: 'photo', name: 'HERO_MAGAZINE_CROP', rect: rect(W * 0.47, 0, W * 0.53, H * 0.56), path: hero!.path, mask: 'none', fit: 'cover', focusY: 0.3 });
-  g.depth.nodes.push(polygon('MAGAZINE_BLACK_FIELD', [[0, 0], [610, 0], [490, 770], [0, 720]], p.ink, 98));
-  g.depth.nodes.push(polygon('MAGAZINE_RED_CUT', [[455, 0], [535, 0], [410, 770], [330, 748]], p.accent, 92));
+  g.mainPhoto.nodes.push({ kind: 'photo', name: 'HERO_MAGAZINE_CROP', rect: rect(W * 0.47, 0, W * 0.53, H * 0.56), path: hero!.path, mask: 'none', fit: 'cover', focusY: 0.3 });
+  g.overlay.nodes.push(polygon('MAGAZINE_BLACK_FIELD', [[0, 0], [610, 0], [490, 770], [0, 720]], p.ink, 98));
+  g.overlay.nodes.push(polygon('MAGAZINE_RED_CUT', [[455, 0], [535, 0], [410, 770], [330, 748]], p.accent, 92));
   addBranding(ctx, true); addTitle(ctx, rect(58, 160, 430, 190), p.white, 'left', 64); addDateBadge(ctx, 58, 366);
   addQuote(ctx, rect(58, 458, 390, 150), p.soft, p.accent); addTwoColumnProgramme(ctx, 58, 820, W - 116, p.ink); addFooter(ctx, true);
 }

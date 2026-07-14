@@ -1,8 +1,7 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { dataDir, readText, writeText, readBinary, writeBinary, listDir, deleteEntry, copyEntry, ensureDir, join } from '../storage/fileSystemBridge';
-import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join as pathJoin, dirname } from 'node:path';
-import { tmpdir } from 'node:os';
 
 async function parseBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -52,11 +51,10 @@ export async function handleStorageApi(req: IncomingMessage, res: ServerResponse
   if (endpoint === 'upload' && req.method === 'POST') {
     const { fields, files } = await parseFormData(req);
     const targetDir = fields.dir || dataDir();
-    ensureDir(targetDir);
     const results: any[] = [];
     for (const [key, file] of Object.entries(files)) {
       const dstPath = pathJoin(targetDir, file.name);
-      writeFileSync(dstPath, file.data);
+      writeBinary(dstPath, new Uint8Array(file.data));
       results.push({ field: key, name: file.name, size: file.data.length, path: dstPath });
     }
     json(res, { files: results });
@@ -79,8 +77,6 @@ export async function handleStorageApi(req: IncomingMessage, res: ServerResponse
     case 'write-text': {
       const { path, content } = body;
       if (!path) { json(res, { error: 'path required' }, 400); return true; }
-      const d = dirname(path);
-      if (!existsSync(d)) mkdirSync(d, { recursive: true });
       writeText(path, content);
       json(res, { success: true });
       return true;
@@ -97,8 +93,6 @@ export async function handleStorageApi(req: IncomingMessage, res: ServerResponse
       const { path, data } = body;
       if (!path) { json(res, { error: 'path required' }, 400); return true; }
       const bytes = new Uint8Array(Buffer.from(data, 'base64'));
-      const d = dirname(path);
-      if (!existsSync(d)) mkdirSync(d, { recursive: true });
       writeBinary(path, bytes);
       json(res, { success: true, bytes: bytes.length });
       return true;

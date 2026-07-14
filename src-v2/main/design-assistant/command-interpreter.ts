@@ -168,7 +168,7 @@ export function parseCommand(raw: string): ParsedCommand {
   if (/reduce.*saturation|less saturated|desaturate/.test(text)) operations.push({ type: 'adjustSaturation', delta: -(pct ?? 20) });
 
   // ── Text content / style ──
-  const replaceM = raw.match(/(?:replace text with|change text to|set text to|make it say)\s+["“]?(.+?)["”]?\s*$/i);
+  const replaceM = raw.match(/(?:replace (?:the )?(?:selected )?text with|change (?:the )?(?:selected )?text to|set (?:the )?(?:selected )?text to|make it say)\s+["“]?(.+?)["”]?\s*$/i);
   if (replaceM) operations.push({ type: 'replaceText', text: replaceM[1].trim() });
   if (/uppercase|all caps/.test(text)) operations.push({ type: 'setTextCase', mode: 'upper' });
   else if (/title case/.test(text)) operations.push({ type: 'setTextCase', mode: 'title' });

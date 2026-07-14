@@ -37,7 +37,14 @@ const rawLayer: z.ZodType<any> = z.lazy(() => z.object({
 export const rawAnalysisSchema = z.object({
   success: z.literal(true),
   stage: z.literal('completed'),
-  document: z.object({ name: z.string(), width: z.number(), height: z.number(), resolution: z.number() }),
+  document: z.object({
+    name: z.string(),
+    path: z.string().default(''),
+    saved: z.boolean().default(false),
+    width: z.number(),
+    height: z.number(),
+    resolution: z.number(),
+  }),
   layers: z.array(rawLayer),
   activeLayerId: z.number().nullable().default(null),
 });

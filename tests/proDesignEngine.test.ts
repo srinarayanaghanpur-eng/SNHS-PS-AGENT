@@ -2,7 +2,10 @@
 // Validates: 6 distinct variants, 3 composition families, no overlapping,
 // font validation, photo handling, quality scoring, and refinement.
 
-import { describe, it, expect } from 'vitest';
+import { afterAll, beforeAll, describe, it, expect } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { critiqueDesign } from '../src-v2/main/design/pro/critic';
 import { derivePaletteFromPrimary } from '../src-v2/main/design/pro/colour';
 import { detectInstalledFonts } from '../src-v2/main/design/pro/typography';
@@ -17,6 +20,10 @@ import { emitJsxFromSceneGraph } from '../src-v2/main/design/pro/jsxEmitterPro';
 import { makeSceneGraph, makeGroup, makeText, makeImage, makeShape, makeLine, resetNodeIdCounter } from '../src-v2/main/design/pro/nodeFactory';
 import type { SceneGraph } from '../src-v2/main/design/pro/sceneGraph';
 import type { ContentInput } from '../src-v2/main/design/pro/nodeFactory';
+
+let runtimeTestRoot = '';
+beforeAll(() => { runtimeTestRoot = mkdtempSync(join(tmpdir(), 'snhs-pro-design-')); });
+afterAll(() => { rmSync(runtimeTestRoot, { recursive: true, force: true }); });
 
 const BASE_CONTENT: ContentInput = {
   school: {
@@ -255,7 +262,7 @@ describe('Design Engine Pipeline', () => {
         primaryColor: TEST_PRIMARY_COLOR,
         fontDetection: fontResult,
         photoPaths: [],
-        outputDir: './test-output',
+        outputDir: join(runtimeTestRoot, 'variants'),
       });
 
       expect(candidates.length).toBe(6);
@@ -277,7 +284,7 @@ describe('Design Engine Pipeline', () => {
         primaryColor: TEST_PRIMARY_COLOR,
         fontDetection: fontResult,
         photoPaths: [],
-        outputDir: './test-output-diff',
+        outputDir: join(runtimeTestRoot, 'variant-diff'),
       });
 
       // Collect group structures for comparison

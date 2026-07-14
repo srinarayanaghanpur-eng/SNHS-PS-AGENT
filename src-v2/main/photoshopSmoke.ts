@@ -4,7 +4,7 @@ import { access, copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/prom
 import { join } from 'node:path';
 import { app } from 'electron';
 import { z } from 'zod';
-import { atomicJson, baseFolder } from './storage';
+import { assertStorageReady, atomicJson, createJobWorkspace, getStoragePaths } from './storage';
 import { smokeResultSchema, type SmokeResult } from '../shared/ipc';
 
 const jsxResultSchema = z.object({ success: z.literal(true), stage: z.literal('completed'), details: z.string(), psdPath: z.string(), jpgPath: z.string() });
@@ -23,8 +23,10 @@ async function waitForFile(path: string, timeoutMs: number): Promise<void> {
 
 export async function runPhotoshopSmoke(): Promise<SmokeResult> {
   const jobId = `smoke-${randomUUID()}`;
-  const jobDir = join(baseFolder(), 'Jobs', jobId);
-  const outputDir = join(jobDir, 'output');
+  await assertStorageReady(256 * 1024 * 1024);
+  const workspace = await createJobWorkspace(jobId);
+  const jobDir = workspace.root;
+  const outputDir = workspace.output;
   const resultPath = join(outputDir, 'result.json');
   await mkdir(outputDir, { recursive: true });
   await atomicJson(join(jobDir, 'job.json'), { schemaVersion: 1, jobId, type: 'photoshop-smoke', createdAt: new Date().toISOString() });
@@ -53,8 +55,8 @@ export async function runPhotoshopSmoke(): Promise<SmokeResult> {
     const parsed = jsxResultSchema.parse(JSON.parse(await readFile(resultPath, 'utf8')));
     const [psd, jpg] = await Promise.all([stat(parsed.psdPath), stat(parsed.jpgPath)]);
     if (!psd.isFile() || !jpg.isFile() || psd.size === 0 || jpg.size === 0) throw new Error('Photoshop returned empty output files.');
-    const finalPsd = join(baseFolder(), 'Outputs', `${jobId}.psd`);
-    const finalJpg = join(baseFolder(), 'Outputs', `${jobId}.jpg`);
+    const finalPsd = join(getStoragePaths().getOutputsPsdDirectory(), `${jobId}.psd`);
+    const finalJpg = join(getStoragePaths().getOutputsJpgDirectory(), `${jobId}.jpg`);
     await Promise.all([copyFile(parsed.psdPath, finalPsd), copyFile(parsed.jpgPath, finalJpg)]);
     const success = smokeResultSchema.parse({ success: true, jobId, stage: 'completed', psdPath: finalPsd, jpgPath: finalJpg });
     await atomicJson(join(jobDir, 'final-result.json'), success);

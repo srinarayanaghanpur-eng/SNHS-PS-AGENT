@@ -14,8 +14,6 @@ const api = {
       ipcRenderer.invoke('shell:openPath', path),
   },
   app: {
-    getPath: (name: string) =>
-      ipcRenderer.invoke('app:getPath', name),
     getDataDir: () =>
       ipcRenderer.invoke('app:getDataDir'),
   },

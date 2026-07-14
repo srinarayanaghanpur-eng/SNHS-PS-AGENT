@@ -9,8 +9,10 @@ import { composeHeroEditorial } from './family_heroEditorial.mjs';
 import { renderPng } from './engine.mjs';
 import { runQualityGate } from './qualityGate.mjs';
 import { makeHeroPhoto, makeLogo, makeLeadLogo } from './placeholders.mjs';
+import { createStoragePaths } from '../../storage/storagePaths.mjs';
 
-const outDir = resolve(process.argv[2] || './studio-output');
+const runtime = createStoragePaths();
+const outDir = resolve(process.argv[2] || join(runtime.testRuns, `studio-slice-${Date.now()}`));
 const assetDir = join(outDir, 'assets');
 mkdirSync(assetDir, { recursive: true });
 

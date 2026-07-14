@@ -1,15 +1,15 @@
 // Persistent file logging for the V2 main process. One line per event in
-// Documents/SNHS Smart Poster Agent/Logs/agent-YYYY-MM-DD.log; errors also go
+// E:/AI AGENTS/SmartPosterAgent/logs/agent-YYYY-MM-DD.log; errors also go
 // to the console so `--*-gate` CI runs show them.
 
 import { appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { baseFolder } from './storage';
+import { getStoragePaths } from './storage';
 
 let queue: Promise<void> = Promise.resolve();
 
 function logFile(): string {
-  return join(baseFolder(), 'Logs', `agent-${new Date().toISOString().slice(0, 10)}.log`);
+  return join(getStoragePaths().getLogsDirectory(), `agent-${new Date().toISOString().slice(0, 10)}.log`);
 }
 
 export function log(level: 'INFO' | 'WARN' | 'ERROR', event: string, detail?: unknown): void {
@@ -18,7 +18,7 @@ export function log(level: 'INFO' | 'WARN' | 'ERROR', event: string, detail?: un
   queue = queue.then(async () => {
     try {
       const file = logFile();
-      await mkdir(join(baseFolder(), 'Logs'), { recursive: true });
+      await mkdir(getStoragePaths().getLogsDirectory(), { recursive: true });
       await appendFile(file, line, 'utf8');
     } catch { /* logging must never crash the app */ }
   });

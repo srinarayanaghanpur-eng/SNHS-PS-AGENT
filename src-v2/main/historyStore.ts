@@ -1,11 +1,12 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import { baseFolder } from './storage';
+import { readFile } from 'node:fs/promises';
+import { getStorageManager } from './storage/storage-manager';
+import { atomicJson } from './storage';
 import type { HistoryRecord, HistoryStore } from '../shared/historyTypes';
 import { HISTORY_SCHEMA_VERSION } from '../shared/historyTypes';
 
-function historyFilePath(): string {
-  return join(baseFolder(), 'Logs', 'poster-history.json');
+async function historyFilePath(): Promise<string> {
+  const mgr = await getStorageManager();
+  return mgr.getPaths().getHistoryPath();
 }
 
 let cache: HistoryStore | null = null;
@@ -13,7 +14,8 @@ let cache: HistoryStore | null = null;
 async function ensureStore(): Promise<HistoryStore> {
   if (cache) return cache;
   try {
-    const raw = await readFile(historyFilePath(), 'utf8');
+    const fp = await historyFilePath();
+    const raw = await readFile(fp, 'utf8');
     const parsed = JSON.parse(raw) as HistoryStore;
     if (parsed.schemaVersion === HISTORY_SCHEMA_VERSION) {
       cache = parsed;
@@ -28,9 +30,8 @@ async function ensureStore(): Promise<HistoryStore> {
 }
 
 async function persist(store: HistoryStore): Promise<void> {
-  const dir = join(baseFolder(), 'Logs');
-  await mkdir(dir, { recursive: true });
-  await writeFile(historyFilePath(), JSON.stringify(store, null, 2), 'utf8');
+  const fp = await historyFilePath();
+  await atomicJson(fp, store);
 }
 
 export async function listHistory(): Promise<HistoryRecord[]> {

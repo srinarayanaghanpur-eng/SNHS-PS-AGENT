@@ -1,16 +1,27 @@
 import { app } from 'electron';
-import { mkdir, readFile, writeFile, stat, rm, readdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat, rm, readdir, rename } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
-import { existsSync } from 'node:fs';
 import { StoragePaths } from './storage-paths';
 import { validateStorageRoot } from './storage-validator';
 import { estimateMigration, executeMigration } from './storage-migration';
 import type { StorageSettings, StorageUsageSummary, MigrationPlan, MigrationResult, ValidationResult } from './storage-types';
+import { DEFAULT_DATA_ROOT } from './storagePaths.mjs';
 
 const SETTINGS_FILE = 'storage-config.json';
 const SETTINGS_SCHEMA_VERSION = 2;
 
-const DEFAULT_ROOT = 'E:\\AI AGENTS\\SNHS SMART POSTER AGENT';
+function pointerDirectory(): string {
+  return process.env.SNHS_POINTER_USER_DATA || app.getPath('userData');
+}
+
+export async function writeConfiguredDataRoot(dataRoot: string): Promise<void> {
+  const directory = pointerDirectory();
+  const target = join(directory, SETTINGS_FILE);
+  const temporary = `${target}.${process.pid}.${Date.now()}.tmp`;
+  await mkdir(directory, { recursive: true });
+  await writeFile(temporary, JSON.stringify({ dataRoot: resolve(dataRoot), schemaVersion: SETTINGS_SCHEMA_VERSION, updatedAt: new Date().toISOString() }, null, 2), 'utf8');
+  await rename(temporary, target);
+}
 
 export class StorageManager {
   private paths!: StoragePaths;
@@ -26,27 +37,22 @@ export class StorageManager {
 
   private async init(): Promise<void> {
     const saved = await this.loadSettings();
-    if (saved && saved.rootPath && existsSync(saved.rootPath.split('\\').slice(0, 2).join('\\') + '\\')) {
-      this._rootPath = saved.rootPath;
-    } else if (saved && saved.rootPath) {
-      const drive = saved.rootPath.slice(0, 2);
-      if (/^[A-Za-z]:$/.test(drive) && !existsSync(drive + '\\')) {
-        this._rootPath = DEFAULT_ROOT;
-      } else {
-        this._rootPath = DEFAULT_ROOT;
-      }
-    } else {
-      this._rootPath = DEFAULT_ROOT;
+    const configured = process.env.SNHS_AGENT_DATA_ROOT || saved?.dataRoot || saved?.rootPath || DEFAULT_DATA_ROOT;
+    const validation = await validateStorageRoot(configured);
+    if (!validation.valid) {
+      const drive = configured.slice(0, 2);
+      throw new Error(`STORAGE_ROOT_UNAVAILABLE: Configured storage drive ${drive || configured} is unavailable. Reconnect the drive or choose another storage location. ${validation.errors.join(' ')}`);
     }
+    this._rootPath = resolve(configured);
     this.paths = new StoragePaths(this._rootPath);
-    await this.saveSettings({ rootPath: this._rootPath });
+    if (!process.env.SNHS_AGENT_DATA_ROOT) await this.saveSettings({ dataRoot: this._rootPath });
     await this.ensureDirectories();
   }
 
   // ── Settings persistence ──
 
   private settingsPath(): string {
-    return join(app.getPath('userData'), SETTINGS_FILE);
+    return join(pointerDirectory(), SETTINGS_FILE);
   }
 
   private async loadSettings(): Promise<StorageSettings | null> {
@@ -59,15 +65,16 @@ export class StorageManager {
   }
 
   private async saveSettings(partial: Partial<StorageSettings>): Promise<StorageSettings> {
-    const existing = await this.loadSettings() || { rootPath: '', schemaVersion: SETTINGS_SCHEMA_VERSION, updatedAt: '' };
+    const existing = await this.loadSettings() || { dataRoot: '', schemaVersion: SETTINGS_SCHEMA_VERSION, updatedAt: '' };
     const updated: StorageSettings = {
       ...existing,
       ...partial,
+      dataRoot: partial.dataRoot || existing.dataRoot || existing.rootPath || DEFAULT_DATA_ROOT,
       schemaVersion: SETTINGS_SCHEMA_VERSION,
       updatedAt: new Date().toISOString(),
     };
-    await mkdir(app.getPath('userData'), { recursive: true });
-    await writeFile(this.settingsPath(), JSON.stringify(updated, null, 2), 'utf8');
+    delete updated.rootPath;
+    await writeConfiguredDataRoot(updated.dataRoot);
     return updated;
   }
 
@@ -81,7 +88,7 @@ export class StorageManager {
 
   private async ensureDirectories(): Promise<void> {
     const dirs = this.paths.getAllDirectories();
-    await Promise.all(dirs.map((d) => mkdir(d, { recursive: true }).catch(() => { })));
+    await Promise.all(dirs.map((d) => mkdir(d, { recursive: true })));
   }
 
   // ── Validation ──
@@ -94,6 +101,8 @@ export class StorageManager {
 
   async setStorageRoot(newRoot: string, migrateExisting = false): Promise<void> {
     const resolved = resolve(newRoot);
+    const validation = await validateStorageRoot(resolved);
+    if (!validation.valid) throw new Error(`STORAGE_ROOT_INVALID: ${validation.errors.join(' ')}`);
     const paths = new StoragePaths(resolved);
 
     if (migrateExisting && this._rootPath && this._rootPath !== resolved) {
@@ -103,7 +112,7 @@ export class StorageManager {
         await Promise.all(dirs.map((d) => mkdir(d, { recursive: true })));
         this._rootPath = resolved;
         this.paths = paths;
-        await this.saveSettings({ rootPath: resolved });
+        await this.saveSettings({ dataRoot: resolved });
         throw new Error(`Partial migration: ${result.filesMigrated} moved, ${result.failedFiles} failed. Check ${result.logPath}`);
       }
     } else {
@@ -113,7 +122,11 @@ export class StorageManager {
 
     this._rootPath = resolved;
     this.paths = paths;
-    await this.saveSettings({ rootPath: resolved });
+    await this.saveSettings({ dataRoot: resolved });
+  }
+
+  async resetToDefault(): Promise<void> {
+    await this.setStorageRoot(DEFAULT_DATA_ROOT, false);
   }
 
   // ── Migration ──
@@ -250,13 +263,16 @@ export class StorageManager {
   // ── Security ──
 
   containedPath(candidate: string): boolean {
-    const root = resolve(this._rootPath) + sep;
-    return resolve(candidate).toLowerCase().startsWith(root.toLowerCase());
+    const root = resolve(this._rootPath).toLowerCase();
+    const value = resolve(candidate).toLowerCase();
+    return value === root || value.startsWith(root + sep.toLowerCase());
   }
 
   // ── Re-initialize after migration ──
 
   async reinit(): Promise<void> {
+    const validation = await validateStorageRoot(this._rootPath);
+    if (!validation.valid) throw new Error(`STORAGE_ROOT_UNAVAILABLE: ${validation.errors.join(' ')}`);
     await this.ensureDirectories();
   }
 }

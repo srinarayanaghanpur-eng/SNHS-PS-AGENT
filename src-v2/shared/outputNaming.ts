@@ -51,10 +51,10 @@ export function templateShortName(presetId: string | undefined, presetLabel?: st
 }
 
 export function formatDateForFilename(date: Date): string {
-  const d = String(date.getDate()).padStart(2, '0');
   const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
   const y = date.getFullYear();
-  return `${d}-${m}-${y}`;
+  return `${y}-${m}-${d}`;
 }
 
 export function generateBaseName(
@@ -63,11 +63,11 @@ export function generateBaseName(
   templateShort: string,
   date: Date,
 ): string {
-  return `${schoolShortForm}_${posterType}_${templateShort}_${formatDateForFilename(date)}`;
+  return `${schoolShortForm}_${posterType}_${formatDateForFilename(date)}`;
 }
 
 const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/g;
 
 export function safeFilename(name: string): string {
-  return name.replace(INVALID_FILENAME_CHARS, '_');
+  return name.normalize('NFKC').replace(INVALID_FILENAME_CHARS, '_').replace(/[. ]+$/g, '').replace(/\s+/g, '_').slice(0, 120) || 'untitled';
 }

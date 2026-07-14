@@ -1,9 +1,9 @@
 {
   "assets": {
-    "mainLogo": "C:/Users/ADMIN/Desktop/SNHS-PS-AGENT-main/acceptance-assets/school-logo.png",
-    "leadLogo": "C:/Users/ADMIN/Desktop/SNHS-PS-AGENT-main/acceptance-assets/lead-logo.png",
-    "assemblyPhoto": "C:/Users/ADMIN/Desktop/SNHS-PS-AGENT-main/acceptance-assets/assembly.jpg",
-    "studentPhoto": "C:/Users/ADMIN/Desktop/SNHS-PS-AGENT-main/acceptance-assets/student.jpg"
+    "mainLogo": "../acceptance-assets/school-logo.png",
+    "leadLogo": "../acceptance-assets/lead-logo.png",
+    "assemblyPhoto": "../acceptance-assets/assembly.jpg",
+    "studentPhoto": "../acceptance-assets/student.jpg"
   },
   "request": {
     "category": "prayer",
@@ -16,6 +16,10 @@
     "variations": 1,
     "exportPng": true,
     "requestedCompositionFamily": "fullBleedAssemblyEditorial",
+    "photos": [
+      { "path": "../acceptance-assets/assembly.jpg", "name": "Morning Assembly" },
+      { "path": "../acceptance-assets/student.jpg", "name": "Prayer Leader" }
+    ],
     "prayer": {
       "day": "Tuesday",
       "prayerTitle": "Morning Prayer",
