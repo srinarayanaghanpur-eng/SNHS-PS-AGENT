@@ -83,8 +83,9 @@ export function composePoster(input: ComposeInput): Plan {
     background.nodes.push({ kind: 'gradient', name: 'BG_GRADIENT', rect: full, stops: [{ hex: pal.bgB, position: 0 }, { hex: pal.bgA, position: 100 }], angle: 90 });
     background.nodes.push({ kind: 'ellipse', name: 'BG_GLOW', rect: r(W * 0.15, -H * 0.12, W * 0.7, H * 0.38), hex: pal.bgB, opacity: 45 });
   } else { // deep-vignette
-    background.nodes.push({ kind: 'gradient', name: 'BG_GRADIENT', rect: full, stops: [{ hex: pal.bgB, position: 0 }, { hex: pal.bgA, position: 78 }], angle: 90 });
-    background.nodes.push({ kind: 'gradient', name: 'BG_VIGNETTE', rect: r(0, H * 0.62, W, H * 0.38), stops: [{ hex: pal.bgA, position: 100 }, { hex: pal.bgB, position: 0 }], angle: 90, opacity: 60 });
+    background.nodes.push({ kind: 'gradient', name: 'BG_GRADIENT', rect: full, stops: [{ hex: pal.bgB, position: 0 }, { hex: shade(pal.bgB, -15), position: 40 }, { hex: pal.bgA, position: 78 }, { hex: shade(pal.bgA, -10), position: 100 }], angle: 90 });
+    background.nodes.push({ kind: 'gradient', name: 'BG_VIGNETTE', rect: r(0, H * 0.55, W, H * 0.45), stops: [{ hex: pal.bgA, position: 100 }, { hex: pal.bgB, position: 0 }], angle: 90, opacity: 65 });
+    background.nodes.push({ kind: 'ellipse', name: 'BG_CORE_GLOW', rect: r(W * 0.1, H * 0.3, W * 0.8, H * 0.5), hex: shade(pal.bgB, 18), opacity: 10 });
   }
 
   // ── 01 DECORATION ─────────────────────────────────────────────────────────
@@ -92,36 +93,39 @@ export function composePoster(input: ComposeInput): Plan {
   const decoHex = lightBase ? pal.primary : pal.accent;
   for (const deco of decos) {
     if (deco === 'circles') {
-      decoration.nodes.push({ kind: 'ellipse', name: 'DECO_CIRCLE_L', rect: r(-W * 0.14, H * 0.16, W * 0.3, W * 0.3), hex: decoHex, opacity: 14 });
-      decoration.nodes.push({ kind: 'ellipse', name: 'DECO_CIRCLE_R', rect: r(W * 0.82, H * 0.55, W * 0.3, W * 0.3), hex: pal.bgB, opacity: 22 });
+      decoration.nodes.push({ kind: 'ellipse', name: 'DECO_CIRCLE_L', rect: r(-W * 0.14, H * 0.16, W * 0.3, W * 0.3), hex: decoHex, opacity: 18 });
+      decoration.nodes.push({ kind: 'ellipse', name: 'DECO_CIRCLE_R', rect: r(W * 0.82, H * 0.55, W * 0.3, W * 0.3), hex: pal.bgB, opacity: 28 });
+      if (seed % 3 !== 0) decoration.nodes.push({ kind: 'ellipse', name: 'DECO_CIRCLE_M', rect: r(W * 0.45, H * 0.85, W * 0.22, W * 0.22), hex: pal.accent, opacity: 12 });
     } else if (deco === 'diagonal-ribbons') {
-      decoration.nodes.push({ kind: 'gradient', name: 'DECO_RIBBON', rect: r(0, H * 0.24, W, H * 0.05), stops: [{ hex: pal.accent, position: 0 }, { hex: pal.bgB, position: 100 }], angle: 0, opacity: 55 });
+      decoration.nodes.push({ kind: 'gradient', name: 'DECO_RIBBON', rect: r(0, H * 0.24, W, H * 0.05), stops: [{ hex: pal.accent, position: 0 }, { hex: shade(pal.accent, -25), position: 50 }, { hex: pal.bgB, position: 100 }], angle: 0, opacity: 60 });
+      if (seed % 2 === 0) decoration.nodes.push({ kind: 'gradient', name: 'DECO_RIBBON_ALT', rect: r(0, H * 0.72, W, H * 0.032), stops: [{ hex: pal.accent, position: 0 }, { hex: shade(pal.accent, -20), position: 100 }], angle: 0, opacity: 35 });
     } else if (deco === 'corner-frames') {
-      decoration.nodes.push({ kind: 'rect', name: 'DECO_FRAME_TL_H', rect: r(safe.left, safe.top, W * 0.13, 5), hex: pal.accent, opacity: 90 });
-      decoration.nodes.push({ kind: 'rect', name: 'DECO_FRAME_TL_V', rect: r(safe.left, safe.top, 5, W * 0.13), hex: pal.accent, opacity: 90 });
-      decoration.nodes.push({ kind: 'rect', name: 'DECO_FRAME_BR_H', rect: r(safe.right - W * 0.13, safe.bottom - 5, W * 0.13, 5), hex: pal.accent, opacity: 90 });
-      decoration.nodes.push({ kind: 'rect', name: 'DECO_FRAME_BR_V', rect: r(safe.right - 5, safe.bottom - W * 0.13, 5, W * 0.13), hex: pal.accent, opacity: 90 });
+      const frameSize = Math.round(W * 0.15);
+      decoration.nodes.push({ kind: 'rect', name: 'DECO_FRAME_TL_H', rect: r(safe.left, safe.top, frameSize, 6), hex: pal.accent, opacity: 92, effects: { glow: { hex: pal.accent, opacity: 35, size: 8 } } });
+      decoration.nodes.push({ kind: 'rect', name: 'DECO_FRAME_TL_V', rect: r(safe.left, safe.top, 6, frameSize), hex: pal.accent, opacity: 92, effects: { glow: { hex: pal.accent, opacity: 35, size: 8 } } });
+      decoration.nodes.push({ kind: 'rect', name: 'DECO_FRAME_BR_H', rect: r(safe.right - frameSize, safe.bottom - 6, frameSize, 6), hex: pal.accent, opacity: 92, effects: { glow: { hex: pal.accent, opacity: 35, size: 8 } } });
+      decoration.nodes.push({ kind: 'rect', name: 'DECO_FRAME_BR_V', rect: r(safe.right - 6, safe.bottom - frameSize, 6, frameSize), hex: pal.accent, opacity: 92, effects: { glow: { hex: pal.accent, opacity: 35, size: 8 } } });
     } else if (deco === 'dot-grid') {
-      for (let iy = 0; iy < 4; iy++) for (let ix = 0; ix < 6; ix++)
-        decoration.nodes.push({ kind: 'ellipse', name: `DECO_DOT_${iy}_${ix}`, rect: r(W * 0.68 + ix * S, H * 0.09 + iy * S, 7, 7), hex: decoHex, opacity: 30 });
+      for (let iy = 0; iy < 5; iy++) for (let ix = 0; ix < 7; ix++)
+        decoration.nodes.push({ kind: 'ellipse', name: `DECO_DOT_${iy}_${ix}`, rect: r(W * 0.64 + ix * S * 0.9, H * 0.06 + iy * S * 0.9, 8, 8), hex: decoHex, opacity: 32 });
     } else if (deco === 'rays') {
-      for (let i = 0; i < 5; i++)
-        decoration.nodes.push({ kind: 'gradient', name: `DECO_RAY_${i}`, rect: r(W * (0.06 + i * 0.19), 0, W * 0.05, H * 0.24), stops: [{ hex: pal.accent, position: 0 }, { hex: pal.bgA, position: 100 }], angle: 90, opacity: 16 });
+      for (let i = 0; i < 7; i++)
+        decoration.nodes.push({ kind: 'gradient', name: `DECO_RAY_${i}`, rect: r(W * (0.02 + i * 0.14), 0, W * 0.05, H * 0.28), stops: [{ hex: pal.accent, position: 0 }, { hex: pal.bgA, position: 100 }], angle: 90, opacity: 20 });
     } else if (deco === 'confetti') {
       const rand = mulberry(seed + 7);
-      for (let i = 0; i < 26; i++) {
-        const size = 6 + Math.round(rand() * 12);
-        decoration.nodes.push({ kind: rand() > 0.5 ? 'ellipse' : 'rect', name: `DECO_CONFETTI_${i}`, rect: r(rand() * W, rand() * H * 0.32, size, size), hex: rand() > 0.5 ? pal.accent : pal.panel, opacity: 22 + Math.round(rand() * 30) } as PlanNode);
+      for (let i = 0; i < 40; i++) {
+        const size = 6 + Math.round(rand() * 16);
+        decoration.nodes.push({ kind: rand() > 0.5 ? 'ellipse' : 'rect', name: `DECO_CONFETTI_${i}`, rect: r(rand() * W, rand() * H * 0.38, size, size), hex: rand() > 0.4 ? pal.accent : (rand() > 0.5 ? pal.panel : pal.primary), opacity: 25 + Math.round(rand() * 35) } as PlanNode);
       }
     } else if (deco === 'waves') {
-      for (let i = 0; i < 3; i++)
-        decoration.nodes.push({ kind: 'ellipse', name: `DECO_WAVE_${i}`, rect: r(-W * 0.2, H * (0.86 + i * 0.05), W * 1.4, H * 0.22), hex: i % 2 ? pal.bgB : pal.accent, opacity: 12 + i * 6 });
+      for (let i = 0; i < 4; i++)
+        decoration.nodes.push({ kind: 'ellipse', name: `DECO_WAVE_${i}`, rect: r(-W * 0.2, H * (0.82 + i * 0.045), W * 1.4, H * 0.22), hex: i % 3 === 0 ? pal.accent : (i % 3 === 1 ? pal.bgB : mix(pal.accent, pal.panel, 0.5)), opacity: 14 + i * 7 });
     } else if (deco === 'side-band') {
-      decoration.nodes.push({ kind: 'rect', name: 'DECO_SIDE_BAND', rect: r(0, 0, Math.round(S / 2.4), H), hex: pal.accent, opacity: 95 });
+      decoration.nodes.push({ kind: 'rect', name: 'DECO_SIDE_BAND', rect: r(0, 0, Math.round(S / 2.2), H), hex: pal.accent, opacity: 96 });
     } else if (deco === 'arch') {
-      decoration.nodes.push({ kind: 'ellipse', name: 'DECO_ARCH', rect: r(W * 0.5 - W * 0.42, H * 0.035, W * 0.84, W * 0.84), hex: pal.accent, opacity: 10 });
+      decoration.nodes.push({ kind: 'ellipse', name: 'DECO_ARCH', rect: r(W * 0.5 - W * 0.42, H * 0.035, W * 0.84, W * 0.84), hex: pal.accent, opacity: 12 });
     } else if (deco === 'halo') {
-      decoration.nodes.push({ kind: 'ellipse', name: 'DECO_HALO', rect: r(W / 2 - W * 0.31, H * 0.015, W * 0.62, W * 0.2), hex: pal.accent, opacity: 13 });
+      decoration.nodes.push({ kind: 'ellipse', name: 'DECO_HALO', rect: r(W / 2 - W * 0.31, H * 0.015, W * 0.62, W * 0.2), hex: pal.accent, opacity: 16 });
     }
   }
 
@@ -165,9 +169,10 @@ export function composePoster(input: ComposeInput): Plan {
   const titleX = titlePos === 'top-left' ? safe.left : Math.round((W - titleBoxW) / 2);
 
   if (titlePos === 'banner') {
-    const bannerH = titleFit.height + S * 1.5;
-    headlineG.nodes.push({ kind: 'gradient', name: 'TITLE_BANNER', rect: r(0, cursorY, W, bannerH), stops: [{ hex: pal.accent, position: 0 }, { hex: shade(pal.accent, -28), position: 100 }], angle: 0, opacity: 100 });
-    headlineG.nodes.push({ kind: 'text', name: 'MAIN_TITLE', content: headline, rect: r(titleX, cursorY + Math.round(S * 0.75), titleBoxW, titleFit.height + 6), font: ty.title, size: titleFit.size, minSize: 28, maxLines: 2, hex: pal.primary, align: 'center', tracking: ty.titleTracking, surfaceHex: pal.accent, effects: { shadow: { hex: 'FFFFFF', opacity: 25, distance: 1, size: 2, angle: 90 } } });
+    const bannerH = titleFit.height + S * 1.8;
+    headlineG.nodes.push({ kind: 'gradient', name: 'TITLE_BANNER', rect: r(0, cursorY, W, bannerH), stops: [{ hex: pal.accent, position: 0 }, { hex: shade(pal.accent, 18), position: 35 }, { hex: shade(pal.accent, -28), position: 100 }], angle: 0, opacity: 100 });
+    headlineG.nodes.push({ kind: 'rect', name: 'TITLE_BANNER_EDGE', rect: r(0, cursorY + bannerH - 4, W, 4), hex: shade(pal.accent, -40), opacity: 70 });
+    headlineG.nodes.push({ kind: 'text', name: 'MAIN_TITLE', content: headline, rect: r(titleX, cursorY + Math.round(S * 0.85), titleBoxW, titleFit.height + 8), font: ty.title, size: titleFit.size, minSize: 28, maxLines: 2, hex: pal.primary, align: 'center', tracking: ty.titleTracking, surfaceHex: pal.accent, effects: { shadow: { hex: 'FFFFFF', opacity: 28, distance: 1, size: 3, angle: 90 } } });
     cursorY += bannerH + Math.round(S * 0.8);
   } else {
     headlineG.nodes.push({ kind: 'text', name: 'MAIN_TITLE', content: headline, rect: r(titleX, cursorY, titleBoxW, titleFit.height + 6), font: ty.title, size: titleFit.size, minSize: 28, maxLines: 2, hex: lightBase ? pal.primary : pal.textOnDark, align: titleAlign, tracking: ty.titleTracking, surfaceHex: pal.bgA, effects: lightBase ? undefined : { shadow: { hex: '000000', opacity: 45, distance: 5, size: 14, angle: 120 }, glow: { hex: pal.accent, opacity: 18, size: 24 } } });
@@ -197,7 +202,8 @@ export function composePoster(input: ComposeInput): Plan {
       const cx = safe.left + i * (cellW + (mgmt.length > 1 ? S : 0));
       const frameMode = person.frame ?? 'circle';
       const mask = frameMode === 'circle' ? 'circle' : frameMode === 'rounded' ? 'rounded' : 'rect';
-      managementG.nodes.push({ kind: mask === 'circle' ? 'ellipse' : 'rect', name: `${m.role}_RING`, rect: r(cx - 4, cursorY - 4, portraitD + 8, portraitD + 8), hex: pal.accent, radius: 12, effects: { shadow: { hex: '000000', opacity: 35, distance: 5, size: 12, angle: 120 } } } as PlanNode);
+      managementG.nodes.push({ kind: mask === 'circle' ? 'ellipse' : 'rect', name: `${m.role}_RING_OUTER`, rect: r(cx - 6, cursorY - 6, portraitD + 12, portraitD + 12), hex: mix(pal.accent, 'FFFFFF', 0.3), radius: 14, opacity: 60 } as PlanNode);
+      managementG.nodes.push({ kind: mask === 'circle' ? 'ellipse' : 'rect', name: `${m.role}_RING`, rect: r(cx - 3, cursorY - 3, portraitD + 6, portraitD + 6), hex: pal.accent, radius: 12, effects: { shadow: { hex: '000000', opacity: 40, distance: 6, size: 14, angle: 120 } } } as PlanNode);
       managementG.nodes.push({ kind: 'photo', name: `${m.role}_PHOTO`, rect: r(cx, cursorY, portraitD, portraitD), path: asset.path, mask, radius: 14, focusY: 0.32, zoom: asset.crop?.zoom, offsetX: asset.crop?.offsetX, offsetY: asset.crop?.offsetY });
       const tx = cx + portraitD + Math.round(S * 0.6);
       const tw = cellW - portraitD - Math.round(S * 0.6);
@@ -208,16 +214,16 @@ export function composePoster(input: ComposeInput): Plan {
   }
 
   // ── FOOTER (computed first so content knows its ceiling) ────────────────
-  const footerH = Math.round(H * 0.085);
+  const footerH = Math.round(H * 0.09);
   const footerY = H - footerH;
   if (preset.footer === 'minimal-line') {
-    footerG.nodes.push({ kind: 'rect', name: 'FOOTER_LINE', rect: r(safe.left, footerY, safe.width, 3), hex: pal.accent });
+    footerG.nodes.push({ kind: 'rect', name: 'FOOTER_LINE', rect: r(safe.left, footerY, safe.width, 4), hex: pal.accent, effects: { glow: { hex: pal.accent, opacity: 30, size: 6 } } });
     footerG.nodes.push({ kind: 'text', name: 'FOOTER_PHONE', content: `Phone: ${input.school.phone}`, rect: r(safe.left, footerY + S * 0.7, safe.width / 2, 30), font: ty.body, size: Math.round(W * 0.019), minSize: 13, maxLines: 1, hex: lightBase ? pal.primary : pal.textOnDark, align: 'left', surfaceHex: pal.bgA });
     footerG.nodes.push({ kind: 'text', name: 'FOOTER_YEAR', content: input.school.academicYear, rect: r(W / 2, footerY + S * 0.7, safe.width / 2, 30), font: ty.body, size: Math.round(W * 0.019), minSize: 13, maxLines: 1, hex: lightBase ? pal.primary : pal.textOnDark, align: 'right', surfaceHex: pal.bgA });
   } else {
-    if (preset.footer === 'gradient-bar') footerG.nodes.push({ kind: 'gradient', name: 'FOOTER_BAR', rect: r(0, footerY, W, footerH), stops: [{ hex: pal.accent, position: 0 }, { hex: shade(pal.accent, -30), position: 100 }], angle: 0 });
+    if (preset.footer === 'gradient-bar') footerG.nodes.push({ kind: 'gradient', name: 'FOOTER_BAR', rect: r(0, footerY, W, footerH), stops: [{ hex: pal.accent, position: 0 }, { hex: shade(pal.accent, 18), position: 40 }, { hex: shade(pal.accent, -30), position: 100 }], angle: 0 });
     else footerG.nodes.push({ kind: 'rect', name: 'FOOTER_BAR', rect: r(0, footerY, W, footerH), hex: pal.accent });
-    footerG.nodes.push({ kind: 'rect', name: 'FOOTER_EDGE', rect: r(0, footerY - 4, W, 4), hex: shade(pal.accent, 25), opacity: 80 });
+    footerG.nodes.push({ kind: 'rect', name: 'FOOTER_EDGE', rect: r(0, footerY - 5, W, 5), hex: shade(pal.accent, 30), opacity: 85 });
     const fy = footerY + Math.round(footerH / 2) - 22;
     // Reserve space on the right when the LEAD logo sits in the footer, so the
     // academic year never runs under it.
@@ -323,9 +329,9 @@ export function composePoster(input: ComposeInput): Plan {
       }
       const mask = treatment === 'circle' ? 'circle' : 'rounded';
       if (treatment === 'polaroid') {
-        photosG.nodes.push({ kind: 'rect', name: `PHOTO_${i + 1}_FRAME`, rect: r(imgRect.x - 8, imgRect.y - 8, imgRect.w + 16, imgRect.h + 16 + (labelH ? 0 : 14)), hex: 'FFFFFF', radius: 6, effects: { shadow: { hex: '000000', opacity: 45, distance: 8, size: 18, angle: 120 } } });
+        photosG.nodes.push({ kind: 'rect', name: `PHOTO_${i + 1}_FRAME`, rect: r(imgRect.x - 10, imgRect.y - 10, imgRect.w + 20, imgRect.h + 20 + (labelH ? 0 : 18)), hex: 'FFFFFF', radius: 6, effects: { shadow: { hex: '000000', opacity: 50, distance: 10, size: 22, angle: 120 }, stroke: { hex: 'E8E8E8', size: 1, opacity: 60 } } });
       } else {
-        photosG.nodes.push({ kind: treatment === 'circle' ? 'ellipse' : 'rect', name: `PHOTO_${i + 1}_RING`, rect: r(imgRect.x - 5, imgRect.y - 5, imgRect.w + 10, imgRect.h + 10), hex: pal.accent, radius: Math.round(S * 0.5) + 5, effects: { shadow: { hex: '000000', opacity: 40, distance: 7, size: 16, angle: 120 } } } as PlanNode);
+        photosG.nodes.push({ kind: treatment === 'circle' ? 'ellipse' : 'rect', name: `PHOTO_${i + 1}_RING`, rect: r(imgRect.x - 5, imgRect.y - 5, imgRect.w + 10, imgRect.h + 10), hex: pal.accent, radius: Math.round(S * 0.5) + 5, effects: { shadow: { hex: '000000', opacity: 45, distance: 8, size: 20, angle: 120 }, stroke: { hex: lightBase ? mix(pal.accent, pal.primary, 0.3) : 'FFFFFF', size: 2, opacity: 70 } } } as PlanNode);
       }
       photosG.nodes.push({ kind: 'photo', name: `PHOTO_${i + 1}`, rect: imgRect, path: photo.path, mask: mask as 'circle' | 'rounded' | 'rect', radius: Math.round(S * 0.5), focusY: 0.38 });
       if (labelH && photo.name) {
@@ -340,7 +346,7 @@ export function composePoster(input: ComposeInput): Plan {
   // paint over the special-event block drawn earlier.
   if (blocks.length) {
     const panelRect = r(safe.left, textZoneY, safe.width, textZoneH);
-    specialG.nodes.push({ kind: 'rect', name: 'CONTENT_PANEL', rect: panelRect, hex: pal.panel, opacity: preset.panelOpacity, radius: Math.round(S * 0.7), effects: { shadow: { hex: '000000', opacity: 30, distance: 8, size: 22, angle: 120 } } });
+    specialG.nodes.push({ kind: 'rect', name: 'CONTENT_PANEL', rect: panelRect, hex: pal.panel, opacity: preset.panelOpacity, radius: Math.round(S * 0.7), effects: { shadow: { hex: '000000', opacity: 35, distance: 10, size: 28, angle: 120 }, stroke: { hex: mix(pal.panel, pal.primary, 0.08), size: 1, opacity: 50 } } });
     const pad = Math.round(S * 1.1);
     let by = panelRect.y + pad;
     const innerW = panelRect.w - pad * 2;
@@ -368,16 +374,17 @@ export function composePoster(input: ComposeInput): Plan {
 
   // Date/venue ribbon pinned above footer — lives in the 03_TITLE group as DATE.
   if (detailLine) {
-    const dh = Math.round(W * 0.042);
-    const dw = Math.min(safe.width, detailLine.length * Math.round(W * 0.0125) + S * 3);
+    const dh = Math.round(W * 0.045);
+    const dw = Math.min(safe.width, detailLine.length * Math.round(W * 0.013) + S * 3.5);
     const dx = Math.round((W - dw) / 2);
-    const dy = footerY - dh - Math.round(S * 0.55);
-    headlineG.nodes.push({ kind: 'rect', name: 'DATE_RIBBON', rect: r(dx, dy, dw, dh), hex: pal.accent, radius: Math.round(dh / 2), effects: { shadow: { hex: '000000', opacity: 35, distance: 5, size: 12, angle: 120 } } });
-    headlineG.nodes.push({ kind: 'text', name: 'DATE', content: detailLine, rect: r(dx + S, dy + Math.round(dh * 0.24), dw - S * 2, Math.round(dh * 0.6)), font: ty.title, size: Math.round(W * 0.019), minSize: 12, maxLines: 1, hex: pal.primary, align: 'center', tracking: 20, surfaceHex: pal.accent });
+    const dy = footerY - dh - Math.round(S * 0.6);
+    headlineG.nodes.push({ kind: 'rect', name: 'DATE_RIBBON', rect: r(dx, dy, dw, dh), hex: pal.accent, radius: Math.round(dh / 2), effects: { shadow: { hex: '000000', opacity: 40, distance: 6, size: 14, angle: 120 }, stroke: { hex: shade(pal.accent, -25), size: 1, opacity: 60 } } });
+    headlineG.nodes.push({ kind: 'text', name: 'DATE', content: detailLine, rect: r(dx + S * 1.2, dy + Math.round(dh * 0.22), dw - S * 2.4, Math.round(dh * 0.6)), font: ty.title, size: Math.round(W * 0.02), minSize: 12, maxLines: 1, hex: pal.primary, align: 'center', tracking: 25, surfaceHex: pal.accent });
   }
 
-  // Top accent edge (kept from the working V2 look, refined).
-  effectsG.nodes.push({ kind: 'gradient', name: 'TOP_ACCENT_EDGE', rect: r(0, 0, W, 10), stops: [{ hex: pal.accent, position: 0 }, { hex: shade(pal.accent, -25), position: 100 }], angle: 0 });
+  // Top accent edge — bold colour stripe across the full width.
+  effectsG.nodes.push({ kind: 'gradient', name: 'TOP_ACCENT_EDGE', rect: r(0, 0, W, 12), stops: [{ hex: pal.accent, position: 0 }, { hex: shade(pal.accent, 20), position: 35 }, { hex: shade(pal.accent, -30), position: 100 }], angle: 0 });
+  effectsG.nodes.push({ kind: 'rect', name: 'TOP_ACCENT_GLOW', rect: r(0, 8, W, 8), hex: shade(pal.accent, 15), opacity: 30 });
 
   // §8 layer structure, bottom → top.
   const ordered: PlanGroup[] = [background, decoration, branding, headlineG, managementG, photosG, specialG, prayerG, programmeG, footerG, effectsG];

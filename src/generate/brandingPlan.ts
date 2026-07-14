@@ -4,7 +4,7 @@
  * so the reference poster's layout is preserved; identity items with no
  * original counterpart go into a footer band.
  */
-import type { DetectedRegion, ReferenceProject, SemanticRole } from '../types';
+import type { DetectedRegion, ReferenceProject, SemanticRole, AssetRole, OnlineAssetRequirement } from '../types';
 import { fitText, type TextFit } from '../repair/textFitting';
 
 export interface PlannedText {
@@ -16,7 +16,7 @@ export interface PlannedText {
   justification: 'left' | 'center' | 'right';
   sourceRegionId?: string;
   isTelugu: boolean;
-  display: boolean; // headline-style (school name / title)
+  display: boolean;
 }
 
 export interface PlannedImage {
@@ -26,7 +26,24 @@ export interface PlannedImage {
   box: { left: number; top: number; width: number; height: number };
 }
 
-export interface BrandingPlan { texts: PlannedText[]; images: PlannedImage[] }
+export interface PlannedOnlineAsset {
+  role: AssetRole;
+  group: string;
+  name: string;
+  localPath: string;
+  sourceUrl: string;
+  box: { left: number; top: number; width: number; height: number };
+  opacity: number;
+  blendMode: 'normal' | 'multiply' | 'screen' | 'overlay' | 'softLight';
+  licence: string;
+}
+
+export interface BrandingPlan {
+  texts: PlannedText[];
+  images: PlannedImage[];
+  onlineAssets: PlannedOnlineAsset[];
+  onlineAssetRequirements: OnlineAssetRequirement[];
+}
 
 const GROUP_FOR: Partial<Record<SemanticRole, string>> = {
   school_name: '06_SCHOOL_BRANDING',
@@ -60,11 +77,12 @@ function centered(box: { left: number; width: number }, canvasWidth: number): 'l
   return Math.abs(mid - canvasWidth / 2) < canvasWidth * 0.12 ? 'center' : box.left < canvasWidth / 2 ? 'left' : 'right';
 }
 
-export function buildBrandingPlan(project: ReferenceProject): BrandingPlan {
+export function buildBrandingPlan(project: ReferenceProject, onlineReqs: OnlineAssetRequirement[] = []): BrandingPlan {
   const p = project.profileSnapshot;
   const W = project.reference.width, H = project.reference.height;
   const texts: PlannedText[] = [];
   const images: PlannedImage[] = [];
+  const plannedOnline: PlannedOnlineAsset[] = [];
   const placedRoles = new Set<SemanticRole>();
   const usesTelugu = (t: string) => /[ఀ-౿]/.test(t);
 
@@ -134,5 +152,39 @@ export function buildBrandingPlan(project: ReferenceProject): BrandingPlan {
     });
   });
 
-  return { texts, images };
+  for (const req of onlineReqs) {
+    if (!req.selectedAssetPath) continue;
+    const role = req.role;
+    const group = role === 'heroBackground' ? '01_BACKGROUND' :
+      role === 'decorativeOverlay' || role === 'lightEffect' || role === 'confetti' ? '03_OVERLAYS' :
+      role === 'academicIcon' || role === 'scheduleIcons' ? '08_ICONS' :
+      role === 'texture' ? '02_TEXTURES' : '04_DECORATIONS';
+    const box = {
+      left: Math.round(W * 0.05),
+      top: Math.round(H * 0.05),
+      width: Math.round(W * 0.9),
+      height: Math.round(H * 0.9)
+    };
+    const name = role === 'heroBackground' ? `ONLINE_BG_${req.searchQuery.split(' ').slice(0, 2).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}` :
+      role === 'decorativeOverlay' || role === 'lightEffect' || role === 'confetti' ? `ONLINE_PNG_${role.charAt(0).toUpperCase() + role.slice(1)}` :
+      role === 'academicIcon' ? `ONLINE_ICON_${role.charAt(0).toUpperCase() + role.slice(1)}` :
+      `ONLINE_DECOR_${role.charAt(0).toUpperCase() + role.slice(1)}`;
+    plannedOnline.push({
+      role,
+      group,
+      name,
+      localPath: req.selectedAssetPath,
+      sourceUrl: req.sourceUrl || '',
+      box,
+      opacity: role === 'heroBackground' ? 1.0 :
+        role === 'lightEffect' ? 0.4 :
+        role === 'texture' ? 0.3 : 0.7,
+      blendMode: role === 'lightEffect' ? 'screen' :
+        role === 'texture' ? 'multiply' :
+        role === 'decorativeOverlay' ? 'overlay' : 'normal',
+      licence: req.licenceStatus || ''
+    });
+  }
+
+  return { texts, images, onlineAssets: plannedOnline, onlineAssetRequirements: onlineReqs };
 }

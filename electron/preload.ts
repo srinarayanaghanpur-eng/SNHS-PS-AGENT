@@ -42,6 +42,31 @@ const api = {
     listFonts: () => ipcRenderer.invoke('ps:listFonts'),
     documentInfo: (docId?: number) => ipcRenderer.invoke('ps:documentInfo', { docId }),
     readLayers: (docId?: number) => ipcRenderer.invoke('ps:readLayers', { docId }),
+    setBlendMode: (layerId: number, blendMode: string) =>
+      ipcRenderer.invoke('ps:setBlendMode', { layerId, blendMode }),
+    applyLayerMask: (layerId: number, maskType: string) =>
+      ipcRenderer.invoke('ps:applyLayerMask', { layerId, maskType }),
+    addGradientOverlay: (layerId: number, colors: string[], angle: number) =>
+      ipcRenderer.invoke('ps:addGradientOverlay', { layerId, colors, angle }),
+    addDropShadow: (layerId: number, distance: number, angle: number, size: number, color: string, opacity: number) =>
+      ipcRenderer.invoke('ps:addDropShadow', { layerId, distance, angle, size, color, opacity }),
+    addGaussianBlur: (layerId: number, radius: number) =>
+      ipcRenderer.invoke('ps:addGaussianBlur', { layerId, radius }),
+  },
+  net: {
+    fetchUrl: (url: string) => ipcRenderer.invoke('net:fetchUrl', { url }),
+    fetchBinary: (url: string) => ipcRenderer.invoke('net:fetchBinary', { url }),
+    searchImages: (query: string, orientation: string, limit: number) =>
+      ipcRenderer.invoke('net:searchImages', { query, orientation, limit }),
+    downloadImage: (url: string, destPath: string) =>
+      ipcRenderer.invoke('net:downloadImage', { url, destPath }),
+  },
+  assetCache: {
+    getCacheRoot: () => ipcRenderer.invoke('assetCache:getCacheRoot'),
+    listCachedAssets: (category?: string) => ipcRenderer.invoke('assetCache:listCachedAssets', { category }),
+    deleteCachedAsset: (id: string) => ipcRenderer.invoke('assetCache:deleteCachedAsset', { id }),
+    clearCache: () => ipcRenderer.invoke('assetCache:clearCache'),
+    getCacheStats: () => ipcRenderer.invoke('assetCache:getCacheStats'),
   },
   fs: {
     dataDir: () => ipcRenderer.invoke('fs:dataDir'),

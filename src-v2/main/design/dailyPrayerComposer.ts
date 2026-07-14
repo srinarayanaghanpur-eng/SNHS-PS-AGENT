@@ -3,6 +3,12 @@ import { fitText } from './textFit';
 
 const group = (name: string): PlanGroup => ({ name, nodes: [] });
 
+function clamp255(v: number): number { return Math.max(0, Math.min(255, Math.round(v))); }
+function shade(hex: string, percent: number): string {
+  const f = 1 + percent / 100;
+  return [0, 2, 4].map((i) => clamp255(parseInt(hex.slice(i, i + 2), 16) * f).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
 export const DAILY_PRAYER_GROUPS = [
   '00_BACKGROUND',
   '01_DECORATIONS',
@@ -93,18 +99,26 @@ export function composeDailyPrayer(input: ComposeInput): Plan {
   if (input.assets?.background) {
     background.nodes.push({ kind: 'photo', name: 'BACKGROUND_IMAGE', path: input.assets.background.path, rect: r(0, 0, 1080, 1350), mask: 'none', fit: 'cover', focusY: 0.45 });
   }
+  // Multi-stop rich background gradient
   background.nodes.push({
     kind: 'gradient', name: 'ACADEMIC_NAVY_BACKGROUND', rect: r(0, 0, 1080, 1350),
-    stops: [{ hex: primary, position: 0 }, { hex: secondary, position: 100 }], angle: input.variationSeed % 2 ? 72 : 90,
-    opacity: input.assets?.background ? 90 : 100,
+    stops: [{ hex: primary, position: 0 }, { hex: shade(primary, 12), position: 35 }, { hex: secondary, position: 72 }, { hex: shade(secondary, -10), position: 100 }],
+    angle: input.variationSeed % 2 ? 72 : 90,
+    opacity: input.assets?.background ? 88 : 100,
   });
+  // Subtle radial core glow
+  background.nodes.push({ kind: 'ellipse', name: 'BG_CORE_VIGNETTE', rect: r(80, 200, 920, 600), hex: shade(primary, 20), opacity: 8 });
 
-  decorations.nodes.push({ kind: 'rect', name: 'TOP_GOLD_RULE', rect: r(0, 0, 1080, 11), hex: accent });
-  decorations.nodes.push({ kind: 'ellipse', name: 'ACADEMIC_HALO', rect: r(175, 14, 730, 315), hex: white, opacity: 7 });
-  decorations.nodes.push({ kind: 'ellipse', name: 'DECORATIVE_ORBIT', rect: r(input.variationSeed % 2 ? 760 : 824, 356, 280, 280), hex: accent, opacity: 9 });
-  decorations.nodes.push({ kind: 'rect', name: 'LEFT_ACCENT', rect: r(58, 98, 5, 1110), hex: accent, opacity: 82 });
+  // Accent top rule with glow
+  decorations.nodes.push({ kind: 'rect', name: 'TOP_GOLD_RULE', rect: r(0, 0, 1080, 11), hex: accent, effects: { glow: { hex: accent, opacity: 40, size: 10 } } });
+  decorations.nodes.push({ kind: 'ellipse', name: 'ACADEMIC_HALO', rect: r(175, 14, 730, 315), hex: white, opacity: 9 });
+  decorations.nodes.push({ kind: 'ellipse', name: 'DECORATIVE_ORBIT', rect: r(input.variationSeed % 2 ? 760 : 824, 356, 280, 280), hex: accent, opacity: 12 });
+  // Second orbit for depth
+  decorations.nodes.push({ kind: 'ellipse', name: 'DECORATIVE_ORBIT_INNER', rect: r(input.variationSeed % 2 ? 790 : 854, 386, 220, 220), hex: white, opacity: 5 });
+  decorations.nodes.push({ kind: 'rect', name: 'LEFT_ACCENT', rect: r(58, 98, 5, 1110), hex: accent, opacity: 85 });
+  decorations.nodes.push({ kind: 'gradient', name: 'LEFT_ACCENT_GLOW', rect: r(63, 98, 18, 1110), stops: [{ hex: accent, position: 0 }, { hex: primary, position: 100 }], angle: 90, opacity: 18 });
   for (let i = 0; i < 5; i += 1) {
-    decorations.nodes.push({ kind: 'ellipse', name: `ACADEMIC_DOT_${i + 1}`, rect: r(938 + i * 17, 394, 6, 6), hex: accent, opacity: 55 });
+    decorations.nodes.push({ kind: 'ellipse', name: `ACADEMIC_DOT_${i + 1}`, rect: r(938 + i * 17, 394, 7, 7), hex: accent, opacity: 60 });
   }
 
   const mainLogo = input.assets?.mainLogo ?? (input.school.logoPath ? { path: input.school.logoPath } : undefined);
@@ -158,8 +172,8 @@ export function composeDailyPrayer(input: ComposeInput): Plan {
   const itemHeight = items.length > 10 ? 40 : items.length > 8 ? 46 : 51;
   const programmeH = Math.min(606, 76 + items.length * itemHeight + 24);
 
-  programme.nodes.push({ kind: 'rect', name: 'PROGRAMME_PANEL_SHADOW', rect: r(panelX + 7, contentTop + 9, panelW, programmeH), hex: '06152C', radius: sx(24), opacity: 24 });
-  programme.nodes.push({ kind: 'rect', name: 'PROGRAMME_PANEL', rect: r(panelX, contentTop, panelW, programmeH), hex: paper, radius: sx(24) });
+  programme.nodes.push({ kind: 'rect', name: 'PROGRAMME_PANEL_SHADOW', rect: r(panelX + 8, contentTop + 10, panelW, programmeH), hex: '06152C', radius: sx(24), opacity: 28 });
+  programme.nodes.push({ kind: 'rect', name: 'PROGRAMME_PANEL', rect: r(panelX, contentTop, panelW, programmeH), hex: paper, radius: sx(24), effects: { stroke: { hex: 'D0D8E4', size: 1, opacity: 50 } } });
   programme.nodes.push({ kind: 'rect', name: 'PROGRAMME_HEADER', rect: r(panelX, contentTop, panelW, 66), hex: accent, radius: sx(24) });
   programme.nodes.push({ kind: 'rect', name: 'PROGRAMME_HEADER_SQUARE_OFF', rect: r(panelX, contentTop + 38, panelW, 28), hex: accent });
   programme.nodes.push(fittedText('PROGRAMME_TITLE', 'MORNING PROGRAMME', r(panelX + 27, contentTop + 18, panelW - 54, 31), heading, sx(26), sx(17), 1, ink, 'left', 1, 35, accent));
@@ -230,14 +244,15 @@ export function composeDailyPrayer(input: ComposeInput): Plan {
     });
   }
 
-  footer.nodes.push({ kind: 'gradient', name: 'FOOTER_GOLD_BAR', rect: r(0, footerY, 1080, 110), stops: [{ hex: accent, position: 0 }, { hex: 'D99523', position: 100 }], angle: 0 });
-  footer.nodes.push({ kind: 'rect', name: 'FOOTER_TOP_RULE', rect: r(0, footerY, 1080, 5), hex: white, opacity: 70 });
+  footer.nodes.push({ kind: 'gradient', name: 'FOOTER_GOLD_BAR', rect: r(0, footerY, 1080, 110), stops: [{ hex: accent, position: 0 }, { hex: shade(accent, 15), position: 35 }, { hex: 'D99523', position: 100 }], angle: 0 });
+  footer.nodes.push({ kind: 'rect', name: 'FOOTER_TOP_RULE', rect: r(0, footerY, 1080, 5), hex: white, opacity: 75 });
+  footer.nodes.push({ kind: 'rect', name: 'FOOTER_TOP_RULE_GLOW', rect: r(0, footerY + 3, 1080, 4), hex: accent, opacity: 25 });
   footer.nodes.push(fittedText('PHONE_NUMBER', `Phone: ${input.school.phone}`, r(64, footerY + 27, 360, 29), heading, sx(20), sx(13), 1, ink, 'left', 1, 0, accent));
   footer.nodes.push(fittedText('LEAD_BRANDING', 'Powered by LEAD Curriculum', r(610, footerY + 27, leadLogo && showLead ? 270 : 400, 29), heading, sx(20), sx(13), 1, ink, 'right', 1, 0, accent));
   footer.nodes.push(fittedText('FOOTER_ADDRESS', input.school.address, r(64, footerY + 65, 760, 24), body, sx(15), sx(10), 1, ink, 'left', 1, 0, accent));
   if (leadLogo && showLead) footer.nodes.push(photoNode('LEAD_LOGO_FOOTER', leadLogo, r(902, footerY + 19, 110, 58), 'none'));
 
-  effects.nodes.push({ kind: 'gradient', name: 'BOTTOM_HIGHLIGHT', rect: r(0, 1338, 1080, 12), stops: [{ hex: orange, position: 0 }, { hex: accent, position: 100 }], angle: 0 });
+  effects.nodes.push({ kind: 'gradient', name: 'BOTTOM_HIGHLIGHT', rect: r(0, 1338, 1080, 12), stops: [{ hex: orange, position: 0 }, { hex: accent, position: 50 }, { hex: shade(accent, -20), position: 100 }], angle: 0 });
 
   return {
     width: W, height: H, baseHex: primary,

@@ -144,3 +144,65 @@ export async function psSaveJpeg(filePath: string, quality = 11, docId?: number)
 export async function psDuplicateDocument(docId?: number): Promise<any> {
   return api().ps.duplicateDocument(docId);
 }
+
+// ─── Online Asset Scout API ──────────────────────────────
+
+export async function psSetBlendMode(layerId: number, blendMode: string): Promise<any> {
+  return api().ps.setBlendMode(layerId, blendMode);
+}
+
+export async function psApplyLayerMask(layerId: number, maskType: string): Promise<any> {
+  return api().ps.applyLayerMask(layerId, maskType);
+}
+
+export async function psAddGradientOverlay(layerId: number, colors: string[], angle: number): Promise<any> {
+  return api().ps.addGradientOverlay(layerId, colors, angle);
+}
+
+export async function psAddDropShadow(layerId: number, distance: number, angle: number, size: number, color: string, opacity: number): Promise<any> {
+  return api().ps.addDropShadow(layerId, distance, angle, size, color, opacity);
+}
+
+export async function psAddGaussianBlur(layerId: number, radius: number): Promise<any> {
+  return api().ps.addGaussianBlur(layerId, radius);
+}
+
+export async function netFetchUrl(url: string): Promise<{ content: string; status: number; ok: boolean }> {
+  return api().net.fetchUrl(url);
+}
+
+export async function netFetchBinary(url: string): Promise<{ data: string; status: number; ok: boolean }> {
+  return api().net.fetchBinary(url);
+}
+
+export async function netSearchImages(query: string, orientation: string = 'portrait', limit: number = 20): Promise<any> {
+  return api().net.searchImages(query, orientation, limit);
+}
+
+export async function netDownloadImage(url: string, destPath: string): Promise<{ success: boolean; path?: string; bytes?: number; error?: string }> {
+  return api().net.downloadImage(url, destPath);
+}
+
+export async function getCacheRoot(): Promise<string> {
+  const r = await api().assetCache.getCacheRoot();
+  return r.path;
+}
+
+export async function listCachedAssets(category?: string): Promise<{ name: string; path: string; size: number; modifiedAt: string }[]> {
+  const r = await api().assetCache.listCachedAssets(category);
+  return r.entries;
+}
+
+export async function deleteCachedAsset(id: string): Promise<boolean> {
+  const r = await api().assetCache.deleteCachedAsset(id);
+  return r.success;
+}
+
+export async function clearAssetCache(): Promise<boolean> {
+  const r = await api().assetCache.clearCache();
+  return r.success;
+}
+
+export async function getCacheStats(): Promise<{ totalCount: number; totalSize: number; categories: Record<string, number> }> {
+  return api().assetCache.getCacheStats();
+}

@@ -1,0 +1,39 @@
+{
+  "school": {
+    "name": "SRI NARAYANA HIGH SCHOOL",
+    "branch": "Ghanpur Campus",
+    "address": "Ghanpur (M), Jayashankar Bhupalpally District, Telangana",
+    "phone": "6300038389",
+    "academicYear": "Academic Year 2026-27",
+    "motto": "Knowledge · Discipline · Character"
+  },
+  "brand": {
+    "primaryColor": "#1E3A5F",
+    "accentColor": null
+  },
+  "event": {
+    "type": "prayer",
+    "title": "Morning Prayer Assembly",
+    "titleCase": "auto",
+    "subtitle": "A meaningful start to every day",
+    "date": "Monday, 21 July 2026",
+    "venue": "School Auditorium",
+    "message": "Students gathered for prayer, reflection and a positive beginning.",
+    "schedule": [
+      "Prayer Song", "Pledge", "Thought for the Day", "News Headlines",
+      "Word of the Day", "Quiz Question", "Birthday Wishes",
+      "Principal's Message", "National Anthem"
+    ]
+  },
+  "assets": {
+    "schoolLogo": "school-logo.png",
+    "leadLogo": "lead-logo.png",
+    "hero": "hero.jpg",
+    "management": [
+      { "role": "Chairman", "name": "Sri K. Narayana", "image": "chairman.jpg" },
+      { "role": "Principal", "name": "Dr. S. Rao", "image": "principal.jpg" }
+    ],
+    "photos": []
+  },
+  "leadBranding": "Powered by LEAD"
+}

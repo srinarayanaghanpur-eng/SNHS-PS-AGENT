@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { AssetRecord, FileRef, GenerationResult, PosterData, TemplateManifest } from '../types';
+import type { AssetRecord, FileRef, GenerationResult, PosterData, TemplateManifest, OnlineAssetRequirement } from '../types';
+import type { PlannedOnlineAsset } from '../generate/brandingPlan';
 import { analyzeCurrentPsd } from '../core/manifestBuilder';
 import { deleteManifest, listManifests, saveManifest, updateManifest } from '../core/templateStorage';
 import { tagLayers } from '../core/smartTagger';
@@ -31,6 +32,9 @@ const nav: [string, string][] = [
 ];
 
 const initial: PosterData = { mode: 'custom', values: {}, students: [], files: {}, exportFormats: ['png'] };
+let _onlineAssets: PlannedOnlineAsset[] = [];
+export function setOnlineAssets(assets: PlannedOnlineAsset[]): void { _onlineAssets = assets; }
+export function getOnlineAssets(): PlannedOnlineAsset[] { return _onlineAssets; }
 
 async function pickFile(): Promise<{ name: string; path: string } | null> {
   return selectFile('.png,.jpg,.jpeg,.webp');
@@ -103,7 +107,7 @@ export default function App() {
   };
 
   const generate = () => manifest && void run('Generate poster', async () => {
-    const r = await generatePoster(manifest, data, (message, percent) => setProgress({ message, percent }));
+    const r = await generatePoster(manifest, data, (message, percent) => setProgress({ message, percent }), _onlineAssets.length > 0 ? _onlineAssets : undefined);
     setResult(r);
     setScreen('generate');
   });

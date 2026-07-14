@@ -138,6 +138,104 @@ $.writeln("DOC_RES:" + doc.resolution);
 } else { $.writeln("ERROR:No document"); }`;
 }
 
+export function jsxSetBlendMode(layerId: number, blendMode: string): string {
+  const modeMap: Record<string, string> = {
+    normal: 'BlendMode.NORMAL', multiply: 'BlendMode.MULTIPLY', screen: 'BlendMode.SCREEN',
+    overlay: 'BlendMode.OVERLAY', darken: 'BlendMode.DARKEN', lighten: 'BlendMode.LIGHTEN',
+    color: 'BlendMode.COLOR', luminosity: 'BlendMode.LUMINOSITY', softLight: 'BlendMode.SOFTLIGHT',
+    hardLight: 'BlendMode.HARDLIGHT', difference: 'BlendMode.DIFFERENCE', exclusion: 'BlendMode.EXCLUSION',
+    hue: 'BlendMode.HUE', saturation: 'BlendMode.SATURATION'
+  };
+  const jsMode = modeMap[blendMode.toLowerCase()] || 'BlendMode.NORMAL';
+  return `try {
+var layer = doc.layers.getById(${layerId});
+layer.blendMode = ${jsMode};
+} catch(e) { $.writeln("WARN:setBlendMode:" + e); }`;
+}
+
+export function jsxAddLayerMask(layerId: number, maskType: string): string {
+  return `try {
+var layer = doc.layers.getById(${layerId});
+${maskType === 'reveal' ?
+    'layer.add();' :
+    'layer.add(); layer.maskEnabled = true;'
+  }
+} catch(e) { $.writeln("WARN:addLayerMask:" + e); }`;
+}
+
+export function jsxAddDropShadow(layerId: number, distance: number, angle: number, size: number, color: string, opacity: number): string {
+  const r = parseInt(color.slice(1, 3), 16) || 0;
+  const g = parseInt(color.slice(3, 5), 16) || 0;
+  const b = parseInt(color.slice(5, 7), 16) || 0;
+  return `try {
+var layer = doc.layers.getById(${layerId});
+var desc = new ActionDescriptor();
+var ref = new ActionReference();
+ref.putIdentifier(charIDToTypeID("Lyr "), ${layerId});
+desc.putReference(charIDToTypeID("null"), ref);
+var effectDesc = new ActionDescriptor();
+effectDesc.putInteger(charIDToTypeID("Dstr"), ${distance});
+effectDesc.putInteger(charIDToTypeID("Std "), ${size});
+effectDesc.putInteger(charIDToTypeID("blu"), ${size});
+effectDesc.putUnitDouble(charIDToTypeID("Angl"), charIDToTypeID("#Ang"), ${angle});
+effectDesc.putDouble(charIDToTypeID("Opct"), ${opacity});
+var colorDesc = new ActionDescriptor();
+colorDesc.putDouble(charIDToTypeID("Rd  "), ${r});
+colorDesc.putDouble(charIDToTypeID("Grn "), ${g});
+colorDesc.putDouble(charIDToTypeID("Bl  "), ${b});
+effectDesc.putObject(charIDToTypeID("Clr "), charIDToTypeID("RGBC"), colorDesc);
+desc.putObject(charIDToTypeID("T   "), stringIDToTypeID("dropShadow"), effectDesc);
+executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
+} catch(e) { $.writeln("WARN:addDropShadow:" + e); }`;
+}
+
+export function jsxAddGradientOverlay(layerId: number, colors: string[], angle: number): string {
+  const colorStops = colors.map((c, i) => {
+    const r = parseInt(c.slice(1, 3), 16) || 0;
+    const g = parseInt(c.slice(3, 5), 16) || 0;
+    const b = parseInt(c.slice(5, 7), 16) || 0;
+    return `var stop${i} = new ActionDescriptor();
+    stop${i}.putDouble(charIDToTypeID("Lctn"), ${Math.round((i / (colors.length - 1)) * 100)});
+    var clr${i} = new ActionDescriptor();
+    clr${i}.putDouble(charIDToTypeID("Rd  "), ${r});
+    clr${i}.putDouble(charIDToTypeID("Grn "), ${g});
+    clr${i}.putDouble(charIDToTypeID("Bl  "), ${b});
+    stop${i}.putObject(charIDToTypeID("Clr "), charIDToTypeID("RGBC"), clr${i});`;
+  }).join('\n    ');
+  const stopRefs = colors.map((_, i) => `stop${i}`).join(', ');
+  return `try {
+var layer = doc.layers.getById(${layerId});
+var desc = new ActionDescriptor();
+var ref = new ActionReference();
+ref.putIdentifier(charIDToTypeID("Lyr "), ${layerId});
+desc.putReference(charIDToTypeID("null"), ref);
+var effectDesc = new ActionDescriptor();
+var gradient = new ActionDescriptor();
+gradient.putDouble(charIDToTypeID("Angl"), ${angle});
+gradient.putEnumerate(stringIDToTypeID("type"), stringIDToTypeID("gradientType"), stringIDToTypeID("linear"));
+var colorsDesc = new ActionDescriptor();
+colorsDesc.putObject(charIDToTypeID("Clrs"), stringIDToTypeID("gradientColorStops"), ${stopRefs.length > 0 ? `(function(){ var d = new ActionDescriptor(); [${stopRefs}].forEach(function(s,i){ d.putObject(i, charIDToTypeID("GClr"), s); }); return d; })()` : 'new ActionDescriptor()'});
+gradient.putObject(charIDToTypeID("Grad"), charIDToTypeID("Grad"), colorsDesc);
+effectDesc.putObject(stringIDToTypeID("gradientOverlay"), stringIDToTypeID("gradientOverlay"), gradient);
+desc.putObject(charIDToTypeID("T   "), stringIDToTypeID("layerEffects"), effectDesc);
+executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
+} catch(e) { $.writeln("WARN:addGradientOverlay:" + e); }`;
+}
+
+export function jsxAddGaussianBlur(layerId: number, radius: number): string {
+  return `try {
+var layer = doc.layers.getById(${layerId});
+var desc = new ActionDescriptor();
+var ref = new ActionReference();
+ref.putIdentifier(charIDToTypeID("Lyr "), ${layerId});
+desc.putReference(charIDToTypeID("null"), ref);
+var filterDesc = new ActionDescriptor();
+filterDesc.putUnitDouble(charIDToTypeID("Rds "), charIDToTypeID("#Pxl"), ${radius});
+desc.putObject(charIDToTypeID("T   "), stringIDToTypeID("gaussianBlur"), filterDesc);
+executeAction(stringIDToTypeID("filter"), desc, DialogModes.NO);
+} catch(e) { $.writeln("WARN:addGaussianBlur:" + e); }`;
+}
+
 export function jsxReadLayerInfo(docId?: number): string {
   const src = docId ? `app.documents.getById(${docId})` : 'app.activeDocument';
   return `var doc = ${src};

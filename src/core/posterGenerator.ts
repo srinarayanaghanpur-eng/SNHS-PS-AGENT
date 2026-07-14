@@ -1,4 +1,5 @@
-import type { GenerationResult, PosterData, TemplateManifest, ClassifiedLayer, LayoutValidationResult } from '../types';
+import type { GenerationResult, PosterData, TemplateManifest, ClassifiedLayer, LayoutValidationResult, AssetRole } from '../types';
+import type { PlannedOnlineAsset } from '../generate/brandingPlan';
 import { PluginError } from '../utils/errors';
 import { log } from '../utils/logger';
 import { duplicateActiveDocument } from '../photoshop/documentDuplicator';
@@ -12,6 +13,8 @@ import { applySectionLayout } from '../layout/sectionLayoutEngine';
 import { applySpacing } from '../layout/spacingEngine';
 import { refreshAllBounds } from '../layout/layerBoundsReader';
 import { applyAutomaticLayoutFixes } from '../layout/automaticRepairEngine';
+import { psPlaceImage, psSetBlendMode, psSetOpacity, psAddGaussianBlur, psAddDropShadow, psAddGradientOverlay, psMoveLayerIntoGroup, psAddGroup } from '../bridge/apiClient';
+import { buildOnlineLayerName } from '../assets/onlineAssetScout';
 
 const slug = (s: string) => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').slice(0, 70) || 'Poster';
 
@@ -58,10 +61,99 @@ function qualityLabel(score: number): 'Excellent' | 'Good' | 'Needs Review' | 'I
   return 'Invalid';
 }
 
+const ONLINE_ASSET_GROUP_MAP: Record<string, string> = {
+  heroBackground: '01_ONLINE_BACKGROUND',
+  decorativeOverlay: '03_ONLINE_OVERLAYS',
+  lightEffect: '03_ONLINE_OVERLAYS',
+  confetti: '03_ONLINE_OVERLAYS',
+  texture: '02_ONLINE_TEXTURES',
+  academicIcon: '08_ONLINE_ICONS',
+  scheduleIcons: '08_ONLINE_ICONS',
+  cornerDecoration: '04_ONLINE_DECORATIONS',
+  festivalIllustration: '04_ONLINE_DECORATIONS',
+  floralDecoration: '04_ONLINE_DECORATIONS',
+  frame: '04_ONLINE_DECORATIONS',
+  sectionDivider: '04_ONLINE_DECORATIONS',
+  abstractShape: '04_ONLINE_DECORATIONS',
+  patternBackground: '02_ONLINE_TEXTURES',
+  transparentOverlay: '03_ONLINE_OVERLAYS'
+};
+
+async function placeOnlineAssets(
+  docId: number,
+  docW: number,
+  docH: number,
+  onlineAssets: PlannedOnlineAsset[],
+  onProgress?: (m: string, p: number) => void
+): Promise<void> {
+  const groupIds: Record<string, number> = {};
+
+  for (const asset of onlineAssets) {
+    onProgress?.(`Placing online asset: ${asset.name}`, 0);
+    try {
+      const groupName = ONLINE_ASSET_GROUP_MAP[asset.role] || '04_ONLINE_DECORATIONS';
+
+      if (!groupIds[groupName]) {
+        const groupResult = await psAddGroup(groupName);
+        if (groupResult?.success) {
+          const gIdMatch = groupResult.stdout?.match(/LAYER_ID:(\d+)/);
+          if (gIdMatch) groupIds[groupName] = parseInt(gIdMatch[1], 10);
+        }
+      }
+
+      const result = await psPlaceImage(asset.localPath, asset.name);
+      if (!result?.success) {
+        log('warn', 'posterGenerator', `Failed to place online asset: ${asset.name}`);
+        continue;
+      }
+
+      const layerIdMatch = result.stdout?.match(/LAYER_ID:(\d+)/);
+      if (!layerIdMatch) continue;
+      const layerId = parseInt(layerIdMatch[1], 10);
+
+      if (asset.opacity !== 1.0) {
+        await psSetOpacity(layerId, Math.round(asset.opacity * 100));
+      }
+
+      if (asset.blendMode !== 'normal') {
+        await psSetBlendMode(layerId, asset.blendMode);
+      }
+
+      const groupId = groupIds[groupName];
+      if (groupId) {
+        await psMoveLayerIntoGroup(layerId, groupId);
+      }
+
+      if (asset.role === 'heroBackground') {
+        const maxDim = Math.max(docW, docH);
+        if (maxDim > 0) {
+          await psAddGaussianBlur(layerId, Math.round(maxDim * 0.005));
+        }
+        await psSetOpacity(layerId, 60);
+      }
+
+      if (asset.role === 'lightEffect') {
+        await psSetBlendMode(layerId, 'screen');
+        await psSetOpacity(layerId, 35);
+      }
+
+      if (asset.role === 'texture') {
+        await psSetBlendMode(layerId, 'multiply');
+        await psSetOpacity(layerId, 25);
+      }
+
+      log('info', 'posterGenerator', `Placed online asset: ${asset.name} (layer ${layerId})`);
+    } catch (err) {
+      log('warn', 'posterGenerator', `Failed to place ${asset.name}: ${err}`);
+    }
+  }
+}
+
 export async function generatePoster(
   manifest: TemplateManifest,
   data: PosterData,
-  onProgress?: (m: string, p: number) => void
+  onProgress?: (m: string, p: number) => void,
+  onlineAssets?: PlannedOnlineAsset[]
 ): Promise<GenerationResult> {
   if (!data.exportFolder && !data.exportFormats.length) {
     throw new PluginError('NO_EXPORT_FOLDER', 'Choose an export folder.', 'Click Choose Export Folder before generating.');
@@ -116,6 +208,11 @@ export async function generatePoster(
 
     onProgress?.('Arranging student cards', 40 + attempt * 14);
     warnings.push(...(await arrangeStudentCards(docId, manifest.layers, data.students)).warnings);
+
+    if (onlineAssets && onlineAssets.length > 0) {
+      onProgress?.('Placing online design assets', 45 + attempt * 14);
+      await placeOnlineAssets(docId, docW, docH, onlineAssets, onProgress);
+    }
 
     const updatedLayers = await refreshAllBounds(docId, primaryLayers);
 

@@ -244,3 +244,114 @@ export type BlendMode = 'normal'|'multiply'|'screen'|'overlay'|'darken'|'lighten
 export interface ExportImageOptions {
   quality?:number; compression?:number; embedICC?:boolean; trimTransparent?:boolean;
 }
+
+// --- Online Asset Scout ---
+export type AssetRole =
+  | 'heroBackground'
+  | 'decorativeOverlay'
+  | 'cornerDecoration'
+  | 'academicIcon'
+  | 'festivalIllustration'
+  | 'texture'
+  | 'lightEffect'
+  | 'sectionDivider'
+  | 'scheduleIcons'
+  | 'patternBackground'
+  | 'frame'
+  | 'floralDecoration'
+  | 'confetti'
+  | 'abstractShape'
+  | 'transparentOverlay';
+
+export interface SearchIntent {
+  posterCategory: EventMode;
+  event: string;
+  schoolAgeGroup: 'primary' | 'secondary' | 'senior' | 'all';
+  designFamily: string;
+  colourPalette: string[];
+  requiredRole: AssetRole;
+  orientation: 'portrait' | 'landscape' | 'square';
+  requiredWidth: number;
+  requiredHeight: number;
+  transparencyRequired: boolean;
+  preferredStyle?: string;
+  preferredColours?: string[];
+}
+
+export interface OnlineAssetRequirement {
+  role: AssetRole;
+  searchQuery: string;
+  requiredOrientation: 'portrait' | 'landscape' | 'square';
+  minimumWidth: number;
+  minimumHeight: number;
+  transparencyRequired: boolean;
+  style?: string;
+  preferredColours?: string[];
+  selectedAssetPath?: string;
+  sourceUrl?: string;
+  licenceStatus?: string;
+}
+
+export interface OnlineAssetResult {
+  id: string;
+  sourceUrl: string;
+  directUrl: string;
+  thumbnailUrl: string;
+  websiteName: string;
+  downloadDate: string;
+  licence: string;
+  width: number;
+  height: number;
+  fileSize?: number;
+  fileType: string;
+  localCachedPath?: string;
+  tags: string[];
+  score: number;
+  rejected: boolean;
+  rejectionReasons: string[];
+  approved: boolean;
+  favourite: boolean;
+  hidden: boolean;
+  passed?: boolean;
+}
+
+export interface OnlineAssetSearchResponse {
+  results: OnlineAssetResult[];
+  totalCount: number;
+  searchQuery: string;
+  searchEngine: string;
+  error?: string;
+}
+
+export interface AssetCacheEntry {
+  id: string;
+  originalUrl: string;
+  sourcePage: string;
+  websiteName: string;
+  downloadDate: string;
+  licence: string;
+  localCachedPath: string;
+  width: number;
+  height: number;
+  fileSize: number;
+  fileType: string;
+  category: string;
+  tags: string[];
+  approved: boolean;
+  favourite: boolean;
+  hidden: boolean;
+  rejectionReasons: string[];
+}
+
+export type AssetCacheCategory =
+  | 'backgrounds'
+  | 'academic'
+  | 'prayer'
+  | 'birthdays'
+  | 'festivals'
+  | 'examinations'
+  | 'admissions'
+  | 'textures'
+  | 'icons'
+  | 'overlays'
+  | 'general';

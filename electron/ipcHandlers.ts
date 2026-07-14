@@ -5,6 +5,10 @@ import {
   existsSync, mkdirSync, readFileSync, writeFileSync,
   unlinkSync, rmSync, copyFileSync, readdirSync, statSync
 } from 'node:fs';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+import { URL } from 'node:url';
+import { createWriteStream } from 'node:fs';
 
 import { detectPhotoshop, executeJsxAsync } from '../backend/photoshop/vbsLauncher';
 import * as jsx from '../backend/photoshop/jsxGenerators';
@@ -152,6 +156,163 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
       }
     }
     return { ...result, layers, bounds, texts };
+  });
+
+  // ─── Photoshop Effects API ──────────────────────────────
+  ipcMain.handle('ps:setBlendMode', async (_event, { layerId, blendMode }: { layerId: number; blendMode: string }) => {
+    return runJsxHandler('var doc = app.activeDocument;\n' + jsx.jsxSetBlendMode(layerId, blendMode));
+  });
+
+  ipcMain.handle('ps:applyLayerMask', async (_event, { layerId, maskType }: { layerId: number; maskType: string }) => {
+    return runJsxHandler('var doc = app.activeDocument;\n' + jsx.jsxAddLayerMask(layerId, maskType));
+  });
+
+  ipcMain.handle('ps:addGradientOverlay', async (_event, { layerId, colors, angle }: { layerId: number; colors: string[]; angle: number }) => {
+    return runJsxHandler('var doc = app.activeDocument;\n' + jsx.jsxAddGradientOverlay(layerId, colors, angle));
+  });
+
+  ipcMain.handle('ps:addDropShadow', async (_event, { layerId, distance, angle, size, color, opacity }: { layerId: number; distance: number; angle: number; size: number; color: string; opacity: number }) => {
+    return runJsxHandler('var doc = app.activeDocument;\n' + jsx.jsxAddDropShadow(layerId, distance, angle, size, color, opacity));
+  });
+
+  ipcMain.handle('ps:addGaussianBlur', async (_event, { layerId, radius }: { layerId: number; radius: number }) => {
+    return runJsxHandler('var doc = app.activeDocument;\n' + jsx.jsxAddGaussianBlur(layerId, radius));
+  });
+
+  // ─── Network API ─────────────────────────────────────────
+  ipcMain.handle('net:fetchUrl', async (_event, { url }: { url: string }) => {
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
+      return { content: text, status: response.status, ok: response.ok };
+    } catch (err: any) {
+      return { content: '', status: 0, ok: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('net:fetchBinary', async (_event, { url }: { url: string }) => {
+    try {
+      const response = await fetch(url);
+      const buffer = await response.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      return { data: base64, status: response.status, ok: response.ok };
+    } catch (err: any) {
+      return { data: '', status: 0, ok: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('net:searchImages', async (_event, { query, orientation, limit }: { query: string; orientation: string; limit: number }) => {
+    const results: any[] = [];
+    try {
+      const orient = orientation === 'portrait' ? 'vertical' : orientation === 'landscape' ? 'horizontal' : 'all';
+      const url = `https://pixabay.com/api/?key=48584830-5eae3f4a3148ebda8c0a5d7e2&q=${encodeURIComponent(query)}&image_type=all&orientation=${orient}&per_page=${limit}&safesearch=true`;
+      const response = await fetch(url);
+      const data: any = await response.json();
+      if (data.hits) {
+        for (const hit of data.hits) {
+          results.push({
+            id: `pixabay_${hit.id}`,
+            sourceUrl: hit.pageURL || '',
+            directUrl: hit.largeImageURL || hit.webformatURL || '',
+            thumbnailUrl: hit.webformatURL || hit.previewURL || '',
+            websiteName: 'Pixabay',
+            width: hit.imageWidth || 0,
+            height: hit.imageHeight || 0,
+            tags: (hit.tags || '').split(',').map((t: string) => t.trim()),
+            licence: 'Pixabay License'
+          });
+        }
+      }
+    } catch { }
+    return { results, query };
+  });
+
+  ipcMain.handle('net:downloadImage', async (_event, { url, destPath }: { url: string; destPath: string }) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const d = dirname(destPath);
+      if (!existsSync(d)) mkdirSync(d, { recursive: true });
+      writeFileSync(destPath, buffer);
+      return { success: true, path: destPath, bytes: buffer.length };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // ─── Asset Cache API ─────────────────────────────────────
+  const ASSET_CACHE_DIR = join(homedir(), 'Documents', 'SNHS Smart Poster Agent', 'asset-cache');
+
+  ipcMain.handle('assetCache:getCacheRoot', async () => ({ path: ASSET_CACHE_DIR }));
+
+  ipcMain.handle('assetCache:listCachedAssets', async (_event, { category }: { category?: string }) => {
+    const entries: any[] = [];
+    const cacheDir = category ? join(ASSET_CACHE_DIR, category) : ASSET_CACHE_DIR;
+    if (!existsSync(cacheDir)) return { entries: [] };
+    const items = readdirSync(cacheDir, { withFileTypes: true });
+    for (const item of items) {
+      if (item.isFile() && !item.name.startsWith('.') && !item.name.endsWith('.json')) {
+        const fullPath = join(cacheDir, item.name);
+        const stat = statSync(fullPath);
+        entries.push({ name: item.name, path: fullPath, size: stat.size, modifiedAt: stat.mtime.toISOString() });
+      }
+    }
+    return { entries };
+  });
+
+  ipcMain.handle('assetCache:deleteCachedAsset', async (_event, { id }: { id: string }) => {
+    try {
+      const allDirs = readdirSync(ASSET_CACHE_DIR, { withFileTypes: true }).filter(d => d.isDirectory());
+      for (const dir of allDirs) {
+        const dirPath = join(ASSET_CACHE_DIR, dir.name);
+        const files = readdirSync(dirPath);
+        const match = files.find(f => f.startsWith(id));
+        if (match) {
+          unlinkSync(join(dirPath, match));
+          return { success: true };
+        }
+      }
+      return { success: false, error: 'Asset not found' };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('assetCache:clearCache', async () => {
+    try {
+      const allDirs = readdirSync(ASSET_CACHE_DIR, { withFileTypes: true }).filter(d => d.isDirectory());
+      for (const dir of allDirs) {
+        const dirPath = join(ASSET_CACHE_DIR, dir.name);
+        const files = readdirSync(dirPath);
+        for (const file of files) {
+          if (!file.startsWith('.')) rmSync(join(dirPath, file), { force: true });
+        }
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('assetCache:getCacheStats', async () => {
+    let totalCount = 0;
+    let totalSize = 0;
+    const categories: Record<string, number> = {};
+    try {
+      if (!existsSync(ASSET_CACHE_DIR)) return { totalCount: 0, totalSize: 0, categories: {} };
+      const allDirs = readdirSync(ASSET_CACHE_DIR, { withFileTypes: true }).filter(d => d.isDirectory());
+      for (const dir of allDirs) {
+        const dirPath = join(ASSET_CACHE_DIR, dir.name);
+        const files = readdirSync(dirPath).filter(f => !f.startsWith('.') && !f.endsWith('.json'));
+        categories[dir.name] = files.length;
+        for (const file of files) {
+          totalSize += statSync(join(dirPath, file)).size;
+        }
+        totalCount += files.length;
+      }
+    } catch { }
+    return { totalCount, totalSize, categories };
   });
 
   // ─── Storage API ─────────────────────────────────────────
