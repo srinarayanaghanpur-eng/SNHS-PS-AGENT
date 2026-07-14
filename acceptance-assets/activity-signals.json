@@ -1,0 +1,11 @@
+{
+  "assembly.jpg": {
+    "assembledStanding": true,
+    "prayerGesture": true
+  },
+  "student.jpg": {
+    "student": true,
+    "microphone": true,
+    "readingPaper": true
+  }
+}

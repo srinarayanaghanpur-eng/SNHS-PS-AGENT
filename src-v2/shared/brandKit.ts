@@ -8,7 +8,7 @@ import { z } from 'zod';
 export const BRAND_ASSET_KEYS = [
   'mainLogo', 'secondaryLogo', 'leadLogo', 'groupLogo',
   'chairmanPhoto', 'correspondentPhoto', 'directorPhoto', 'principalPhoto', 'headmasterPhoto',
-  'campusPhoto', 'buildingPhoto', 'busPhoto',
+  'studentPhoto', 'assemblyPhoto', 'campusPhoto', 'buildingPhoto', 'busPhoto',
   'defaultBackground', 'signature', 'stamp', 'qrCode', 'sponsorLogo',
 ] as const;
 export type BrandAssetKey = typeof BRAND_ASSET_KEYS[number];
@@ -18,7 +18,7 @@ export const ASSET_SUBFOLDER: Record<BrandAssetKey, string> = {
   mainLogo: 'logos', secondaryLogo: 'logos', leadLogo: 'logos', groupLogo: 'logos',
   chairmanPhoto: 'management', correspondentPhoto: 'management', directorPhoto: 'management',
   principalPhoto: 'management', headmasterPhoto: 'management',
-  campusPhoto: 'campus', buildingPhoto: 'campus', busPhoto: 'campus',
+  studentPhoto: 'students', assemblyPhoto: 'campus', campusPhoto: 'campus', buildingPhoto: 'campus', busPhoto: 'campus',
   defaultBackground: 'backgrounds', signature: 'signatures', stamp: 'stamps', qrCode: 'partners', sponsorLogo: 'partners',
 };
 
@@ -26,6 +26,7 @@ export const ASSET_LABELS: Record<BrandAssetKey, string> = {
   mainLogo: 'Main school logo', secondaryLogo: 'Secondary school logo', leadLogo: 'LEAD logo', groupLogo: 'School group logo',
   chairmanPhoto: 'Chairman photograph', correspondentPhoto: 'Correspondent photograph', directorPhoto: 'Director photograph',
   principalPhoto: 'Principal photograph', headmasterPhoto: 'Headmaster photograph',
+  studentPhoto: 'Student hero photograph', assemblyPhoto: 'Assembly photograph',
   campusPhoto: 'Campus photograph', buildingPhoto: 'School building photograph', busPhoto: 'School bus photograph',
   defaultBackground: 'Default background image', signature: 'Signature image', stamp: 'School stamp',
   qrCode: 'QR code', sponsorLogo: 'Sponsor / partner logo',

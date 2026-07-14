@@ -65,3 +65,16 @@ export function typographyPairing() {
     label: { family: 'Poppins', weight: 600, kind: 'bodyUpper' },
   };
 }
+
+// System-safe pairing for the Photoshop/SVG collage path. Segoe UI and Arial
+// render consistently on Windows and avoid silent substitution by unrelated
+// decorative fonts carrying a conflicting family name.
+export function collageTypographyPairing() {
+  return {
+    display: { family: 'Segoe UI', weight: 700, kind: 'displayUpper' },
+    displaySemi: { family: 'Segoe UI', weight: 600, kind: 'display' },
+    body: { family: 'Arial', weight: 400, kind: 'body' },
+    bodyBold: { family: 'Arial', weight: 700, kind: 'body' },
+    label: { family: 'Segoe UI', weight: 600, kind: 'bodyUpper' },
+  };
+}

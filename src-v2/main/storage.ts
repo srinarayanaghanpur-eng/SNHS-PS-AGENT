@@ -3,9 +3,10 @@ import { dirname, resolve, sep } from 'node:path';
 import { getStorageManager, StorageManager } from './storage/storage-manager';
 
 export const folders = [
-  'Projects', 'Assets', 'Photoshop', 'Premiere', 'Word',
-  'AI Models', 'Database', 'Cache', 'Temp', 'Logs', 'Backups',
-  'Jobs', 'BrandKits', 'Config',
+  'jobs', 'outputs', 'outputs/psd', 'outputs/png', 'outputs/jpg', 'outputs/pdf',
+  'assets', 'cache', 'cache/previews', 'cache/thumbnails', 'cache/temporary',
+  'history', 'logs', 'backups', 'poster-brain', 'poster-brain/datasets',
+  'poster-brain/models', 'acceptance', 'test-runs',
 ] as const;
 
 let _mgr: StorageManager | null = null;

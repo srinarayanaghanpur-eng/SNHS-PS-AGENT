@@ -38,23 +38,21 @@ export async function resolveOutputPaths(
   const safeBase = safeFilename(base);
   const { year, month } = yearMonth(posterDate);
 
-  const dir = join(outputsRoot(), shortForm, year, month, safeBase);
   let version = 1;
-  let finalDir = dir;
-  let finalBase = safeBase;
+  const outputRoot = outputsRoot();
+
+  const psdDir = join(outputRoot, 'psd', shortForm, year, month);
+  const pngDir = join(outputRoot, 'png', shortForm, year, month);
+  const jpgDir = join(outputRoot, 'jpg', shortForm, year, month);
 
   let existing: string[] = [];
-  try {
-    existing = await readdir(join(outputsRoot(), shortForm, year, month));
-  } catch {
-    // Directory doesn't exist yet
-  }
+  try { existing = await readdir(psdDir); } catch { }
 
   const matchPrefix = `${safeBase}_v`;
   const versionedMatch = existing.filter((n) => {
-    if (n === safeBase) return true;
+    if (n === `${safeBase}.psd`) return true;
     if (n.startsWith(matchPrefix)) {
-      const rest = n.slice(matchPrefix.length);
+      const rest = n.slice(matchPrefix.length).replace(/\.psd$/, '');
       const num = parseInt(rest, 10);
       return !isNaN(num) && String(num) === rest;
     }
@@ -64,34 +62,31 @@ export async function resolveOutputPaths(
   if (versionedMatch.length > 0) {
     let maxV = 0;
     for (const n of versionedMatch) {
-      if (n === safeBase) { maxV = Math.max(maxV, 1); continue; }
-      const rest = n.slice(matchPrefix.length);
+      if (n === `${safeBase}.psd`) { maxV = Math.max(maxV, 1); continue; }
+      const rest = n.slice(matchPrefix.length).replace(/\.psd$/, '');
       const num = parseInt(rest, 10);
       if (!isNaN(num)) maxV = Math.max(maxV, num);
     }
     version = maxV + 1;
-    if (version === 1) {
-      finalDir = dir;
-      finalBase = safeBase;
-    } else {
-      finalBase = `${safeBase}_v${version}`;
-      finalDir = join(outputsRoot(), shortForm, year, month, finalBase);
-    }
   }
 
+  const finalBase = version > 1 ? `${safeBase}_v${version}` : safeBase;
+
   return {
-    folderPath: finalDir,
+    folderPath: join(outputRoot, 'psd', shortForm, year, month),
     baseName: finalBase,
-    psdPath: join(finalDir, `${finalBase}.psd`),
-    pngPath: join(finalDir, `${finalBase}.png`),
-    jpgPath: join(finalDir, `${finalBase}.jpg`),
-    jsonPath: join(finalDir, `${finalBase}.json`),
-    version: version === 1 ? 1 : version,
+    psdPath: join(psdDir, `${finalBase}.psd`),
+    pngPath: join(pngDir, `${finalBase}.png`),
+    jpgPath: join(jpgDir, `${finalBase}.jpg`),
+    jsonPath: join(outputRoot, 'psd', shortForm, year, month, `${finalBase}.json`),
+    version,
   };
 }
 
 export async function createOutputFolder(paths: OutputPaths): Promise<void> {
   await mkdir(paths.folderPath, { recursive: true });
+  if (paths.pngPath) await mkdir(join(paths.pngPath, '..'), { recursive: true });
+  if (paths.jpgPath) await mkdir(join(paths.jpgPath, '..'), { recursive: true });
 }
 
 export async function copyOutputFile(source: string, dest: string): Promise<void> {

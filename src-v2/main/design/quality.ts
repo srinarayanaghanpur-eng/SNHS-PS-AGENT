@@ -7,7 +7,12 @@ import type { Plan, PlanNode, QualityReport, QualityWarning, Rect } from './type
 import { contrastRatio, inside, overlap, safeArea } from './layout';
 import { fitText } from './textFit';
 
-const nodeRect = (n: PlanNode): Rect => n.rect;
+const nodeRect = (n: PlanNode): Rect => {
+  if (n.kind !== 'polygon') return n.rect;
+  const xs = n.points.map((point) => point.x); const ys = n.points.map((point) => point.y);
+  const x = Math.min(...xs); const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+};
 
 export function validateAndFix(plan: Plan): QualityReport {
   const warnings: QualityWarning[] = [];

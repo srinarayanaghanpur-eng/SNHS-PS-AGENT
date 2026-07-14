@@ -55,8 +55,11 @@ export async function resolveBrand(request: PosterRequest, profile: SchoolProfil
   const mainLogo = await track('mainLogo', toResolved(profile?.assets.mainLogo)
     ?? (request.logoPath ? { path: request.logoPath } : undefined));
   const leadLogo = await track('leadLogo', toResolved(profile?.assets.leadLogo));
+  const studentPhoto = await track('studentPhoto', toResolved(profile?.assets.studentPhoto));
+  const assemblyPhoto = await track('assemblyPhoto', toResolved(profile?.assets.assemblyPhoto));
+  const campusPhoto = await track('campusPhoto', toResolved(profile?.assets.campusPhoto));
   const background = await track('background', toResolved(profile?.assets.defaultBackground));
-  const assets: BrandAssetsInput = { mainLogo, leadLogo, background };
+  const assets: BrandAssetsInput = { mainLogo, leadLogo, studentPhoto, assemblyPhoto, campusPhoto, background };
 
   const resolvePerson = async (
     role: 'chairman' | 'principal', req: PosterRequest['management'],

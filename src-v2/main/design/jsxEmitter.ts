@@ -58,6 +58,11 @@ function glowDesc(r,g,b,opacity,size){var d=new ActionDescriptor();d.putBoolean(
 function strokeDesc(r,g,b,size,opacity){var d=new ActionDescriptor();d.putBoolean(cTID('enab'),true);d.putEnumerated(cTID('Styl'),cTID('FStl'),cTID('OutF'));d.putEnumerated(cTID('PntT'),cTID('FrFl'),cTID('SClr'));d.putEnumerated(cTID('Md  '),cTID('BlnM'),cTID('Nrml'));d.putUnitDouble(cTID('Opct'),cTID('#Prc'),opacity);d.putUnitDouble(cTID('Sz  '),cTID('#Pxl'),size);d.putObject(cTID('Clr '),cTID('RGBC'),rgbDesc(r,g,b));return d;}
 function applyFx(lefx){var d=new ActionDescriptor();var ref=new ActionReference();ref.putProperty(cTID('Prpr'),cTID('Lefx'));ref.putEnumerated(cTID('Lyr '),cTID('Ordn'),cTID('Trgt'));d.putReference(cTID('null'),ref);d.putObject(cTID('T   '),cTID('Lefx'),lefx);executeAction(cTID('setd'),d,DialogModes.NO);}
 function placeFile(path){var d=new ActionDescriptor();d.putPath(cTID('null'),new File(path));d.putEnumerated(cTID('FTcs'),cTID('QCSt'),cTID('Qcsa'));executeAction(cTID('Plc '),d,DialogModes.NO);return doc.activeLayer;}
+function polygonLayer(group,name,r,g,b,points){
+  var layer=doc.artLayers.add();layer.name=name;layer.kind=LayerKind.NORMAL;
+  doc.selection.select(points);doc.selection.fill(solid(r,g,b),ColorBlendMode.NORMAL,100,false);doc.selection.deselect();
+  layer.move(group,ElementPlacement.INSIDE);return layer;
+}
 // Photoshop does NOT throw when asked for a missing font; it silently applies
 // its default (e.g. MyriadPro). So we verify ti.font actually matches before
 // accepting a candidate, otherwise the controlled Arial fallback never runs.
@@ -106,6 +111,11 @@ function emitNode(node: PlanNode, groupVar: string, plan: Plan): string {
     const rct = node.rect;
     const radius = node.kind === 'rect' ? (node.radius ?? 0) : 0;
     lines.push(`var ly=shapeLayer(${groupVar},${jsStr(node.name)},${hexToRgbCall(node.hex)},${rct.x},${rct.y},${rct.x + rct.w},${rct.y + rct.h},${radius},${node.kind === 'ellipse'});`);
+    lines.push(o(node.opacity, 'ly'));
+    lines.push(emitEffects(node.effects));
+  } else if (node.kind === 'polygon') {
+    const points = node.points.map((point) => `[${Math.round(point.x)},${Math.round(point.y)}]`).join(',');
+    lines.push(`var ly=polygonLayer(${groupVar},${jsStr(node.name)},${hexToRgbCall(node.hex)},[${points}]);`);
     lines.push(o(node.opacity, 'ly'));
     lines.push(emitEffects(node.effects));
   } else if (node.kind === 'gradient') {

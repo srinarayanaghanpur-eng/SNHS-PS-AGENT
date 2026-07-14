@@ -1,0 +1,401 @@
+{
+  "format": "snhs-studio-layer-manifest/v1",
+  "width": 1080,
+  "height": 1350,
+  "omitEmptyGroups": true,
+  "groups": [
+    {
+      "name": "00_BACKGROUND",
+      "nodeCount": 1,
+      "textLayers": 0,
+      "smartObjects": 0,
+      "vectorLayers": 1,
+      "frameLayers": 0
+    },
+    {
+      "name": "01_DECORATIVE_PATTERN",
+      "nodeCount": 7,
+      "textLayers": 0,
+      "smartObjects": 0,
+      "vectorLayers": 7,
+      "frameLayers": 0
+    },
+    {
+      "name": "02_HEADER_IDENTITY",
+      "nodeCount": 10,
+      "textLayers": 5,
+      "smartObjects": 2,
+      "vectorLayers": 3,
+      "frameLayers": 1
+    },
+    {
+      "name": "03_EVENT_TITLE_DATE",
+      "nodeCount": 3,
+      "textLayers": 2,
+      "smartObjects": 0,
+      "vectorLayers": 1,
+      "frameLayers": 0
+    },
+    {
+      "name": "04_HERO_PHOTO",
+      "nodeCount": 3,
+      "textLayers": 1,
+      "smartObjects": 1,
+      "vectorLayers": 1,
+      "frameLayers": 1
+    },
+    {
+      "name": "06_QUOTE_DIVIDER",
+      "nodeCount": 3,
+      "textLayers": 1,
+      "smartObjects": 0,
+      "vectorLayers": 2,
+      "frameLayers": 0
+    },
+    {
+      "name": "09_FOOTER_BRANDING",
+      "nodeCount": 19,
+      "textLayers": 6,
+      "smartObjects": 2,
+      "vectorLayers": 11,
+      "frameLayers": 0
+    }
+  ],
+  "totals": {
+    "groups": 7,
+    "sourceNodes": 46,
+    "photoshopLayers": 48,
+    "textLayers": 15,
+    "smartObjects": 5,
+    "vectorLayers": 28
+  },
+  "layers": [
+    {
+      "group": "00_BACKGROUND",
+      "name": "SHAPE_01",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_DECORATIVE_PATTERN",
+      "name": "SHAPE_01",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_DECORATIVE_PATTERN",
+      "name": "SHAPE_02",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_DECORATIVE_PATTERN",
+      "name": "SHAPE_03",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_DECORATIVE_PATTERN",
+      "name": "SHAPE_04",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_DECORATIVE_PATTERN",
+      "name": "SHAPE_05",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_DECORATIVE_PATTERN",
+      "name": "SHAPE_06",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_DECORATIVE_PATTERN",
+      "name": "SHAPE_07",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "SHAPE_01",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "SHAPE_02",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "LOGO_03_school logo",
+      "type": "image",
+      "source": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\school logo.png",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "TEXT_04_Recognised by the Government of Telangana",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "TEXT_05_SRI NARAYANA HIGH SCHOOL",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "TEXT_06_Ghanpur (M), Jayashankar Bhupalpally District",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "SHAPE_07",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "PHOTO_08_chairman",
+      "type": "image",
+      "source": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\chairman.png",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "TEXT_09_N. Ravi",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_HEADER_IDENTITY",
+      "name": "TEXT_10_Chairman",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_EVENT_TITLE_DATE",
+      "name": "GRADIENT_01",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_EVENT_TITLE_DATE",
+      "name": "TEXT_02_DAILY PRAYER PROCEEDINGS",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_EVENT_TITLE_DATE",
+      "name": "TEXT_03_13 JULY 2026 · MONDAY",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_HERO_PHOTO",
+      "name": "PHOTO_01_hero-enhanced-1784013580972",
+      "type": "image",
+      "source": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\hero-enhanced-1784013580972.jpg",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "04_HERO_PHOTO",
+      "name": "SHAPE_02",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_HERO_PHOTO",
+      "name": "TEXT_03_MORNING ASSEMBLY",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "06_QUOTE_DIVIDER",
+      "name": "RULE_01",
+      "type": "line",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "06_QUOTE_DIVIDER",
+      "name": "RULE_02",
+      "type": "line",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "06_QUOTE_DIVIDER",
+      "name": "TEXT_03_“Education turns today’s dreams into tomorrow’s achievements.”",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "GRADIENT_01",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_02",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_03",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_04",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_05",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_06",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_07",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_08",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_09",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_10",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "LOGO_11_school logo",
+      "type": "image",
+      "source": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\school logo.png",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "TEXT_12_A Unit of",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "TEXT_13_SRI ADARSHAVANI GROUP OF SCHOOLS",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "TEXT_14_Ghanpur | Duggondi | Nallabelly",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "TEXT_15_TEL 6300038389 | 8121063032 | 9032480165",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "TEXT_16_“Education is not the learning of facts, but the training of the mind ",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "SHAPE_17",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "LOGO_18_lead-keyed",
+      "type": "image",
+      "source": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\lead-keyed.png",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "09_FOOTER_BRANDING",
+      "name": "TEXT_19_Powered by LEAD Curriculum",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    }
+  ]
+}

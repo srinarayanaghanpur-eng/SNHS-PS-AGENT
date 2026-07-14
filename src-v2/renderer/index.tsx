@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { PosterApi } from '../main/preload';
-import { composePoster } from '../main/design/composer';
-import type { ComposeInput } from '../main/design/types';
+import { composeDailyPrayerEditorial } from '../main/design/dailyPrayerFamilies';
+import { hashDesignPlan } from '../shared/designPlanHash';
+import type { ComposeInput, Plan } from '../main/design/types';
 import { ASSET_LABELS, formatAddress, type BrandAsset, type BrandAssetKey, type SchoolProfile } from '../shared/brandKit';
 import { PlanSvg } from './planToSvg';
 import { SchoolProfiles } from './SchoolProfiles';
@@ -29,6 +30,15 @@ interface PhotoPick {
 function fileUrl(path: string): string { return encodeURI(`file:///${path.replace(/\\/g, '/')}`); }
 function fileName(path: string): string { return path.split(/[\\/]/).pop() || path; }
 function humanBytes(bytes = 0): string { return bytes ? `${(bytes / 1024 / 1024).toFixed(bytes > 1024 * 1024 ? 1 : 2)} MB` : 'Size unavailable'; }
+function formatDiskSize(bytes: number): string {
+  if (bytes === 0) return '0 GB';
+  const tb = bytes / 1e12;
+  if (tb > 1) return `${tb.toFixed(1)} TB`;
+  const gb = bytes / 1e9;
+  if (gb > 1) return `${gb.toFixed(0)} GB`;
+  const mb = bytes / 1e6;
+  return `${mb.toFixed(0)} MB`;
+}
 function dayForDate(value: string): string {
   const date = new Date(`${value}T12:00:00`);
   return Number.isNaN(date.valueOf()) ? '' : date.toLocaleDateString('en-GB', { weekday: 'long' });
@@ -136,6 +146,155 @@ function ProgrammeRows({ items, setItems }: { items: string[]; setItems: (items:
   );
 }
 
+function RecentEdits({ selectedSchoolId, onEdit }: { selectedSchoolId: string; onEdit: (job: any) => void }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const load = async () => {
+    setLoading(true);
+    try {
+      const list = await window.posterApi.listRecentEdits(selectedSchoolId || undefined, 12);
+      setItems(list || []);
+    } catch { setItems([]); }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, [selectedSchoolId]);
+
+  const filtered = items.filter((item: any) => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!item.title?.toLowerCase().includes(q) && !item.schoolName?.toLowerCase().includes(q) && !item.category?.toLowerCase().includes(q)) return false;
+    }
+    if (filterCategory && item.category !== filterCategory) return false;
+    if (filterStatus && item.status !== filterStatus) return false;
+    return true;
+  }).slice(0, 6);
+
+  const statusStyle = (s: string) => {
+    const map: Record<string, string> = {
+      'draft': 'status-draft', 'generating': 'status-generating', 'photoshop-open': 'status-photoshop',
+      'psd-generated': 'status-psd', 'exported': 'status-exported', 'approved': 'status-approved',
+      'failed': 'status-failed', 'missing-file': 'status-missing',
+    };
+    return map[s] || 'status-draft';
+  };
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = {
+      'draft': 'Draft', 'generating': 'Generating', 'photoshop-open': 'Photoshop Open',
+      'psd-generated': 'PSD Generated', 'exported': 'Exported', 'approved': 'Approved',
+      'failed': 'Failed', 'missing-file': 'Missing File',
+    };
+    return map[s] || s;
+  };
+
+  return <section className="recent-edits">
+    <div className="section-heading">
+      <div>
+        <h2>Recent Edits</h2>
+        <p>Continue working on your latest posters and projects.</p>
+      </div>
+      <div className="recent-edits-filters">
+        <input placeholder="Search posters…" value={search} onChange={(e) => setSearch(e.target.value)} className="search-input" />
+        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+          <option value="">All categories</option>
+          <option value="daily-prayer">Daily Prayer</option>
+          <option value="event">Event</option>
+          <option value="exam">Exam</option>
+          <option value="festival">Festival</option>
+          <option value="general">General</option>
+        </select>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+          <option value="">All status</option>
+          <option value="draft">Draft</option>
+          <option value="psd-generated">PSD Generated</option>
+          <option value="exported">Exported</option>
+          <option value="approved">Approved</option>
+        </select>
+      </div>
+    </div>
+    {loading ? <div className="recent-edits-loading">Loading recent projects…</div> : filtered.length === 0 ? (
+      <div className="recent-edits-empty">
+        <h3>No recent edits yet</h3>
+        <p>Create your first poster to see it here.</p>
+        <button className="primary" onClick={() => { window.location.hash = '#create'; }}>Create Daily Prayer Poster</button>
+      </div>
+    ) : (
+      <div className="recent-edits-grid">
+        {filtered.map((item: any) => {
+          const thumbnail = item.thumbnailPath || item.previewPath || item.pngPath || item.jpgPath;
+          const missing = item.status === 'missing-file' || (item.psdPath && false);
+          return <article className="recent-edit-card" key={item.jobId}>
+            <div className="recent-edit-thumb">
+              {thumbnail ? <img src={encodeURI(`file:///${thumbnail.replace(/\\/g, '/')}`)} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : <div className="recent-edit-thumb-placeholder">No preview</div>}
+            </div>
+            <div className="recent-edit-body">
+              <h4>{item.title || 'Untitled Poster'}</h4>
+              <span className="recent-edit-school">{item.schoolName || 'Unknown School'}</span>
+              <div className="recent-edit-meta">
+                <span>{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                <span className={`recent-edit-status ${statusStyle(item.status)}`}>{statusLabel(item.status)}</span>
+              </div>
+              <div className="recent-edit-outputs">
+                {item.psdPath && <span className="output-badge">PSD</span>}
+                {item.pngPath && <span className="output-badge">PNG</span>}
+                {item.jpgPath && <span className="output-badge">JPG</span>}
+              </div>
+              <div className="recent-edit-actions">
+                <button className="small primary" disabled={missing} onClick={() => onEdit(item)}>Continue Editing</button>
+                {item.psdPath && <button className="small" disabled={missing} onClick={() => window.posterApi.openFileLocation(item.psdPath)}>Open Folder</button>}
+                {missing && <button className="small" onClick={async () => {
+                  const result: any = await window.posterApi.pickImages('photos');
+                  if (!result.canceled && result.paths?.[0]) {
+                    await window.posterApi.openFileLocation(result.paths[0]);
+                  }
+                }}>Locate File</button>}
+              </div>
+            </div>
+          </article>;
+        })}
+      </div>
+    )}
+    {items.length > 6 && <div className="recent-edits-footer"><button onClick={() => {}}>View all projects →</button></div>}
+  </section>;
+}
+
+function BrainFeedback({ result }: { result: any }) {
+  const [fbState, setFbState] = useState<'idle' | 'approved' | 'rejected' | 'loading'>('idle');
+  const [reasons, setReasons] = useState<string[]>([]);
+  const [note, setNote] = useState('');
+  const [brainStats, setBrainStats] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => { window.posterApi.brainStats().then(setBrainStats).catch(() => {}); }, []);
+
+  const posterId = result?.renderLog?.JOB_ID ? `brain_${result.renderLog.JOB_ID}_v0` : null;
+  if (!posterId) return null;
+
+  const allReasons = ['wrong-hero-photo','bad-crop','missing-branding','too-empty','too-crowded','looks-mechanical','typography-problem','looks-like-table','ignores-photos','face-badly-cropped','empty-cards','repeated-rectangles','less-expressive-than-reference','dashboard-resemblance'];
+
+  return <details className="brain-feedback" open={fbState === 'idle'}>
+    <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
+      <span style={{ fontSize: 13, fontWeight: 600 }}>🧠 Poster Brain — Feedback</span>
+      {brainStats && <span style={{ fontSize: 11, opacity: 0.6, marginLeft: 8 }}>{brainStats['human-approved'] + brainStats['generated-approved']} approved · {brainStats['generated-rejected']} rejected · {brainStats.totalPreferencePairs} comparisons</span>}
+    </summary>
+    {fbState === 'approved' && <div className="status success">✓ Approved — added to positive training data</div>}
+    {fbState === 'rejected' && <div className="status" style={{ background: '#ffe0e0' }}>✗ Rejected — saved as negative example</div>}
+    {fbState === 'idle' && <div className="brain-feedback-controls">
+      <div className="brain-feedback-approve">
+        <button className="primary" style={{ background: '#2a8' }} onClick={async () => { setFbState('loading'); await window.posterApi.brainApprove(posterId).catch(() => {}); setFbState('approved'); }}>✓ Approve</button>
+      </div>
+      <div className="brain-feedback-reject">
+        <div className="brain-feedback-reasons">{allReasons.map(r => <label key={r} style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 3, marginRight: 6 }}><input type="checkbox" checked={reasons.includes(r)} onChange={(e) => setReasons(e.target.checked ? [...reasons, r] : reasons.filter(x => x !== r))} />{r.replace(/-/g, ' ')}</label>)}</div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+          <input placeholder="Optional rejection note…" value={note} onChange={(e) => setNote(e.target.value)} style={{ flex: 1, fontSize: 12, padding: '3px 6px' }} />
+          <button style={{ background: '#c33', color: '#fff', fontSize: 12, padding: '3px 10px' }} disabled={reasons.length === 0} onClick={async () => { setFbState('loading'); await window.posterApi.brainReject(posterId, reasons, note).catch(() => {}); setFbState('rejected'); }}>✗ Reject</button>
+        </div>
+      </div>
+    </div>}
+  </details>;
+}
+
 function Results({ result, outputFolder, regenerate }: { result: any; outputFolder: string; regenerate: () => void }) {
   if (!result?.variations?.length) return null;
   const output = result.variations[0];
@@ -145,12 +304,19 @@ function Results({ result, outputFolder, regenerate }: { result: any; outputFold
     <p>Editable PSD, PNG and JPG were created.</p>
     <div className="result-actions"><button onClick={() => window.posterApi.openPath(output.psdPath)}>Open PSD</button>{output.pngPath && <button onClick={() => window.posterApi.openPath(output.pngPath)}>Open PNG</button>}{output.jpgPath && <button onClick={() => window.posterApi.openPath(output.jpgPath)}>Open JPG</button>}<button onClick={() => window.posterApi.openPath(outputFolder)}>Open output folder</button></div>
     <div className="result-actions secondary"><button onClick={improve}>Improve design</button><button onClick={regenerate}>Regenerate</button></div>
+    <BrainFeedback result={result} />
+    {result.renderLog && <details className="job-details" open><summary>Job details and renderer provenance</summary>
+      {result.renderLog.LEGACY_RENDERER_USED && <div className="status error">LEGACY RENDERER USED — OUTPUT REJECTED</div>}
+      <dl className="output-summary">
+        {Object.entries(result.renderLog).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')}</dd></div>)}
+      </dl>
+    </details>}
     {[...output.quality.warnings, ...output.photoshopWarnings.map((message: string) => ({ message }))].map((warning: any, index) => <span className="warning" key={index}>{warning.message}</span>)}
   </div>;
 }
 
 function PreviewPanel({ plan, result, zoom, setZoom, fullscreen, setFullscreen }: {
-  plan: ReturnType<typeof composePoster> | null; result: any; zoom: PreviewZoom; setZoom: (zoom: PreviewZoom) => void; fullscreen: boolean; setFullscreen: (value: boolean) => void;
+  plan: Plan | null; result: any; zoom: PreviewZoom; setZoom: (zoom: PreviewZoom) => void; fullscreen: boolean; setFullscreen: (value: boolean) => void;
 }) {
   const exported = result?.variations?.[0]?.pngPath;
   const width = zoom === 'fit' ? 'min(100%, 540px)' : `${1080 * zoom / 100}px`;
@@ -197,39 +363,51 @@ function SettingsPage({ base }: { base: string }) {
   const [migrationInfo, setMigrationInfo] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [migrationChoice, setMigrationChoice] = useState<'move' | 'none' | 'cancel' | null>(null);
   const load = async () => setSettings(await window.posterApi.getStorageSettings());
   useEffect(() => { load(); }, []);
   const changeRoot = async () => {
     const picked: any = await window.posterApi.chooseStorageRoot();
     if (picked.canceled) return;
-    setBusy(true); setMsg('');
+    setBusy(true); setMsg(''); setMigrationChoice(null);
     try {
       const validation = await window.posterApi.validateStorageRoot(picked.path);
-      if (!validation.valid) { setMsg(`Invalid: ${validation.reasons?.join(', ') || validation.error}`); return; }
+      if (!validation.valid) { setMsg(`Invalid: ${validation.errors?.join(', ') || validation.error}`); return; }
       const plan = await window.posterApi.estimateMigration(picked.path);
-      setMigrationInfo({ ...plan, newRoot: picked.path });
+      if (plan.totalFiles > 0) {
+        setMigrationInfo({ ...plan, newRoot: picked.path });
+      } else {
+        await window.posterApi.migrateStorage(picked.path, false);
+        await load();
+        setMsg('Storage root changed successfully.');
+      }
     } catch (e) { setMsg(String(e)); } finally { setBusy(false); }
   };
-  const confirmMigration = async () => {
+  const confirmMigration = async (mode: 'move' | 'none') => {
     if (!migrationInfo) return;
     setBusy(true); setMsg('');
     try {
-      await window.posterApi.migrateStorage(migrationInfo.newRoot);
-      await load();
-      setMsg('Storage root changed successfully.');
-      setMigrationInfo(null);
+      const result = await window.posterApi.migrateStorage(migrationInfo.newRoot, mode === 'move');
+      if (result.ok) {
+        await load();
+        setMsg(`Storage root changed successfully.${mode === 'move' ? ` Moved ${result.plan?.totalFiles || 0} files.` : ''}`);
+        setMigrationInfo(null);
+      } else {
+        setMsg(`Migration failed: ${result.error}`);
+      }
     } catch (e) { setMsg(`Migration failed: ${String(e)}`); } finally { setBusy(false); }
   };
   const openRoot = async () => { await window.posterApi.openStorageRoot(); };
   const clearDir = async (dir: 'cache' | 'temp') => {
     setBusy(true);
     try {
-      const cleared = dir === 'cache' ? await window.posterApi.clearCache() : await window.posterApi.clearTemp();
-      setMsg(`Cleared ${cleared} files from ${dir}.`);
+      const result = dir === 'cache' ? await window.posterApi.clearCache() : await window.posterApi.clearTemp();
+      setMsg(`Cleared ${result.filesDeleted} files, recovered ${formatDiskSize(result.bytesRecovered)}.`);
       await load();
     } catch (e) { setMsg(String(e)); } finally { setBusy(false); }
   };
   const usage = settings?.usage;
+  const disk = usage?.disk;
   return <section className="page-scroll">
     <div className="workflow-card">
       <h2>Settings</h2>
@@ -239,10 +417,11 @@ function SettingsPage({ base }: { base: string }) {
       <div className="storage-info">
         <div className="storage-path"><b>Current root</b><code>{settings?.root || base}</code><button className="small" onClick={openRoot}>Open in Explorer</button></div>
         {usage && <div className="storage-stats">
-          <span>Disk: {((usage.disk?.usedBytes || 0) / 1e12).toFixed(1)} TB / {((usage.disk?.totalBytes || 1) / 1e12).toFixed(1)} TB ({(usage.disk?.usagePercent || 0).toFixed(1)}%)</span>
-          <span>Cache: {(usage.cacheSizeBytes / 1e6).toFixed(1)} MB</span>
-          <span>Temp: {(usage.tempSizeBytes / 1e6).toFixed(1)} MB</span>
-          <span>{usage.directories?.length || 0} directories</span>
+          <span>Disk: {formatDiskSize(disk?.freeBytes || 0)} free / {formatDiskSize(disk?.totalBytes || 0)} total</span>
+          <span>Used: {(disk?.usagePercent || 0).toFixed(1)}%</span>
+          <span>Cache: {formatDiskSize(usage.cacheSizeBytes || 0)}</span>
+          <span>Temp: {formatDiskSize(usage.tempSizeBytes || 0)}</span>
+          <span>Directories: {usage.directoryCount || 0}</span>
         </div>}
       </div>
       <div className="button-row">
@@ -252,13 +431,15 @@ function SettingsPage({ base }: { base: string }) {
       </div>
 
       {migrationInfo && <div className="migration-card">
-        <h4>Migrate to new location?</h4>
+        <h4>Move existing project data to the new location?</h4>
         <p>New root: <code>{migrationInfo.newRoot}</code></p>
-        <p>Files to migrate: {migrationInfo.totalFiles ?? '…'} ({((migrationInfo.totalSize ?? 0) / 1e6).toFixed(0)} MB)</p>
+        <p>Files to migrate: {migrationInfo.totalFiles ?? '…'} ({formatDiskSize(migrationInfo.totalBytes || 0)})</p>
         <div className="button-row">
-          <button className="primary" disabled={busy} onClick={confirmMigration}>Migrate & switch</button>
+          <button className="primary" disabled={busy} onClick={() => confirmMigration('move')}>Move existing data</button>
+          <button disabled={busy} onClick={() => confirmMigration('none')}>Use new location without moving</button>
           <button disabled={busy} onClick={() => setMigrationInfo(null)}>Cancel</button>
         </div>
+        {migrationInfo.totalFiles > 0 && !migrationInfo.sufficientSpace && <div className="status error">Insufficient space on target drive. Free at least {formatDiskSize(migrationInfo.totalBytes)}.</div>}
       </div>}
 
       {msg && <div className={/success/i.test(msg) ? 'status success' : 'status error'}>{msg}</div>}
@@ -293,6 +474,7 @@ function App() {
     message: 'Let us begin the day with discipline, confidence and positive thoughts.', examInfo: '', festivalInfo: '',
     showSchoolLogo: true, showLead: true, showChairman: true, showPrincipal: true, showContact: true, showAddress: true, showFooterBranding: true,
     overrideLogoPath: '',
+    compositionFamily: 'auto',
   });
   const [showOverrides, setShowOverrides] = useState(false);
   const { stage, reset } = useProgress();
@@ -309,7 +491,7 @@ function App() {
   }, []);
   const profile = profiles.find((item) => item.id === selectedId);
   const day = dayForDate(form.date);
-  const outputFolder = `${base}\\Outputs`;
+  const outputFolder = `${base}\\outputs`;
   const asset = (key: BrandAssetKey) => profile?.assets[key] ? { path: profile.assets[key]!.path, hasAlpha: profile.assets[key]!.hasAlpha, crop: profile.assets[key]!.crop } : undefined;
 
   const composeInput = useMemo<ComposeInput | null>(() => profile ? ({
@@ -332,6 +514,7 @@ function App() {
     assets: {
       mainLogo: form.showSchoolLogo ? (form.overrideLogoPath ? { path: form.overrideLogoPath } : asset('mainLogo')) : undefined,
       leadLogo: form.showLead && form.showFooterBranding ? asset('leadLogo') : undefined,
+      studentPhoto: asset('studentPhoto'), assemblyPhoto: asset('assemblyPhoto'), campusPhoto: asset('campusPhoto'),
       background: asset('defaultBackground'),
     },
     management: {
@@ -339,8 +522,11 @@ function App() {
       principal: form.showPrincipal ? { show: true, asset: asset('principalPhoto'), name: profile.management.principal.name || undefined, designation: profile.management.principal.designation || 'Principal', frame: 'circle' } : undefined,
     },
     prayer: { day, prayerTitle: form.prayerName, thought: form.thought, programme, examInfo: form.examInfo, festivalInfo: form.festivalInfo, birthdays: birthdays.map((item) => ({ name: item.name || 'Student', className: item.className })) },
+    requestedCompositionFamily: form.compositionFamily === 'auto' ? undefined : form.compositionFamily,
   }) : null, [profile, form, photos, birthdays, programme, management, day]);
-  const previewPlan = useMemo(() => { try { return composeInput ? composePoster(composeInput) : null; } catch { return null; } }, [composeInput]);
+  const [previewPlan, setPreviewPlan] = useState<Plan | null>(null);
+  useEffect(() => { try { setPreviewPlan(composeInput ? composeDailyPrayerEditorial(composeInput) : null); } catch { setPreviewPlan(null); } }, [composeInput]);
+  const previewPlanHash = useMemo(() => previewPlan ? hashDesignPlan(previewPlan) : '', [previewPlan]);
 
   const buildRequest = () => ({
     category: 'prayer', headline: form.title, subheadline: form.subtitle, message: form.message, details: displayDate(form.date),
@@ -356,6 +542,9 @@ function App() {
       principal: form.showPrincipal && profile?.assets.principalPhoto ? { show: true, assetKey: 'principalPhoto', name: profile.management.principal.name || undefined, designation: profile.management.principal.designation || 'Principal', frame: 'circle' } : undefined,
     },
     prayer: { day, prayerTitle: form.prayerName, thought: form.thought, programme, examInfo: form.examInfo, festivalInfo: form.festivalInfo, birthdays: birthdays.map((item) => ({ name: item.name || 'Student', className: item.className, photo: item.path })) },
+    requestedCompositionFamily: form.compositionFamily === 'auto' ? undefined : form.compositionFamily,
+    designPlan: previewPlan ?? undefined,
+    previewPlanHash: previewPlanHash || undefined,
   });
 
   const generate = async () => {
@@ -402,6 +591,15 @@ function App() {
       <label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
       <label>Day<input readOnly value={day} /></label>
       <label className="wide">Prayer name<input value={form.prayerName} onChange={(e) => setForm({ ...form, prayerName: e.target.value })} /></label>
+      <label className="wide">Composition family<select className="styled-select" value={form.compositionFamily} onChange={(e) => setForm({ ...form, compositionFamily: e.target.value })}>
+        <option value="auto">Automatic — match available visual assets</option>
+        <option value="fullBleedAssemblyEditorial">Full-Bleed Assembly Editorial</option>
+        <option value="asymmetricStudentHero">Asymmetric Student Hero</option>
+        <option value="editorialPhotoSplit">Editorial Photo Split</option>
+        <option value="layeredPrayerCollage">Layered Prayer Collage</option>
+        <option value="premiumEmblematicAssembly">Premium Emblematic Assembly (no photo)</option>
+        <option value="magazineProgrammeLayout">Magazine Programme Layout</option>
+      </select></label>
       <label className="wide">Thought of the day<textarea rows={2} value={form.thought} onChange={(e) => setForm({ ...form, thought: e.target.value })} /></label>
       <label className="wide">Main message<textarea rows={3} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} /></label>
       <label>Exam announcement<textarea rows={2} value={form.examInfo} onChange={(e) => setForm({ ...form, examInfo: e.target.value })} /></label>
@@ -419,6 +617,9 @@ function App() {
         <ProfileAsset profileId={profile.id} assetKey="leadLogo" asset={profile.assets.leadLogo} emptyText="No LEAD logo selected" reload={reloadProfiles} />
         <ProfileAsset profileId={profile.id} assetKey="chairmanPhoto" asset={profile.assets.chairmanPhoto} emptyText="No chairman photo selected" reload={reloadProfiles} />
         <ProfileAsset profileId={profile.id} assetKey="principalPhoto" asset={profile.assets.principalPhoto} emptyText="No principal photo selected" reload={reloadProfiles} />
+        <ProfileAsset profileId={profile.id} assetKey="studentPhoto" asset={profile.assets.studentPhoto} emptyText="No student hero photo selected" reload={reloadProfiles} />
+        <ProfileAsset profileId={profile.id} assetKey="assemblyPhoto" asset={profile.assets.assemblyPhoto} emptyText="No assembly photo selected" reload={reloadProfiles} />
+        <ProfileAsset profileId={profile.id} assetKey="campusPhoto" asset={profile.assets.campusPhoto} emptyText="No campus photo selected" reload={reloadProfiles} />
         <ProfileAsset profileId={profile.id} assetKey="defaultBackground" asset={profile.assets.defaultBackground} emptyText="No optional background image selected" reload={reloadProfiles} />
       </div>
       <div className="management-toggles">
@@ -458,7 +659,7 @@ function App() {
 
   const reviewStep = <div className="workflow-card review-card">
     <div className="section-heading"><div><span className="eyebrow">STEP 3</span><h2>Review and generate</h2><p>Check the live preview, then create the editable Photoshop document and exports.</p></div></div>
-    <dl className="output-summary"><div><dt>Output size</dt><dd>1080 × 1350 px</dd></div><div><dt>Output folder</dt><dd>{outputFolder}</dd></div><div><dt>Photoshop files</dt><dd>Editable PSD + PNG + JPG</dd></div></dl>
+    <dl className="output-summary"><div><dt>Output size</dt><dd>1080 × 1350 px</dd></div><div><dt>PSD</dt><dd>{outputFolder}\\psd\\{profile?.name ? profile.name.replace(/[^a-zA-Z0-9]/g, '_') : 'school'}\\{form.date.replace(/-/g, '')}\\</dd></div><div><dt>PNG</dt><dd>{outputFolder}\\png\\{profile?.name ? profile.name.replace(/[^a-zA-Z0-9]/g, '_') : 'school'}\\{form.date.replace(/-/g, '')}\\</dd></div><div><dt>Photoshop files</dt><dd>Editable PSD + PNG + JPG</dd></div></dl>
     {issues.length > 0 && <div className="error-card"><b>Fix before generating</b>{issues.map((issue, index) => <span key={index}>{issue.message}</span>)}</div>}
     <ProgressBar stage={busy ? stage : null} />
     {status && <div className={/successfully|completed/i.test(status) ? 'status success' : /error|failed|PHOTOSHOP|PS_COM|VBS/i.test(status) ? 'status error' : 'status'}>{status}</div>}
@@ -470,7 +671,9 @@ function App() {
     <aside className="sidebar"><div className="brand"><img src="app-icon.png" alt="SNHS" /><div><b>SNHS</b><span>SMART POSTER AGENT</span></div></div><nav>{PAGES.map((item) => <button key={item} className={page === item ? 'active' : ''} onClick={() => setPage(item)}>{item}</button>)}</nav><div className="school-chip"><b>{profile?.name || 'No school selected'}</b><span>{profile ? formatAddress(profile) : ''}</span></div></aside>
     <main className="main-shell">
       <header className="topbar"><div><h1>{page}</h1><p>Professional layered poster automation for Photoshop</p></div>{profile && <label className="school-select"><span>School</span><select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>{profiles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}</header>
-      {page === 'Dashboard' && <section className="dashboard"><div className="hero"><span className="eyebrow">WINDOWS + PHOTOSHOP</span><h2>Create today’s school poster as a real editable PSD.</h2><p>The Daily Prayer workflow generates a professional 1080 × 1350 poster, exports PNG and JPG, and keeps every major element editable.</p><button className="primary" onClick={() => { setPage('Daily Prayer'); setStep(1); }}>Create Daily Prayer poster</button></div><div className="dashboard-grid"><article><span>Core workflow</span><b>Photoshop generation ready</b></article><article><span>Output</span><b>PSD · PNG · JPG</b></article><article><span>Canvas</span><b>1080 × 1350</b></article></div></section>}
+      {page === 'Dashboard' && <section className="dashboard"><div className="hero"><span className="eyebrow">WINDOWS + PHOTOSHOP</span><h2>Create today's school poster as a real editable PSD.</h2><p>The Daily Prayer workflow generates a professional 1080 × 1350 poster, exports PNG and JPG, and keeps every major element editable.</p><button className="primary" onClick={() => { setPage('Daily Prayer'); setStep(1); }}>Create Daily Prayer poster</button></div><div className="dashboard-grid"><article><span>Core workflow</span><b>Photoshop generation ready</b></article><article><span>Output</span><b>PSD · PNG · JPG</b></article><article><span>Canvas</span><b>1080 × 1350</b></article></div>
+        <RecentEdits selectedSchoolId={selectedId} onEdit={(job) => { setPage('Daily Prayer'); /* TODO: load job into form */ }} />
+      </section>}
       {page === 'Daily Prayer' && <section className="prayer-workspace">
         <div className="workflow-panel"><div className="step-tabs">{([1, 2, 3] as const).map((value) => <button key={value} className={step === value ? 'active' : ''} onClick={() => setStep(value)}><span>{value}</span>{value === 1 ? 'Content' : value === 2 ? 'Assets' : 'Review & Generate'}</button>)}</div>{step === 1 ? contentStep : step === 2 ? assetsStep : reviewStep}<div className="generate-bar"><div><b>{busy ? 'Photoshop is generating your poster…' : 'Ready to create the editable poster'}</b><span>PSD, PNG and JPG · 1080 × 1350</span></div><button className="primary generate" disabled={busy || !profile} onClick={generate}>{busy ? 'Generating in Photoshop…' : 'Generate in Photoshop'}</button></div></div>
         <PreviewPanel plan={previewPlan} result={result} zoom={zoom} setZoom={setZoom} fullscreen={fullscreen} setFullscreen={setFullscreen} />

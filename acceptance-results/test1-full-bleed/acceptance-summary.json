@@ -1,0 +1,9 @@
+{
+  "test": "test1-full-bleed",
+  "selectedFamily": "fullBleedAssemblyEditorial",
+  "requestedFamily": "fullBleedAssemblyEditorial",
+  "renderer": "immutable-design-plan-jsx",
+  "legacyRendererUsed": false,
+  "planHashesMatch": true,
+  "qualityGateAccepted": true
+}

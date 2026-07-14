@@ -8,7 +8,9 @@ import type { ComposeInput, Plan, PlanGroup, PlanNode, Rect, StudentPhoto } from
 import { autoPreset, presetById, type DesignPreset } from './presets';
 import { fitText } from './textFit';
 import { photoLayout, safeArea } from './layout';
-import { composeDailyPrayer } from './dailyPrayerComposer';
+import { composeDailyPrayerEditorial } from './dailyPrayerFamilies';
+import { analyzeBatch } from './photoAnalysis';
+import { critiquePoster, type VisualCritiqueReport } from './visualCritique';
 
 type Emphasis = 'birthday' | 'lively' | 'exam' | 'festival' | 'programme' | 'general';
 
@@ -38,8 +40,16 @@ function pickPreset(input: ComposeInput, emphasis: Emphasis): DesignPreset {
 const g = (name: string, nodes: PlanNode[] = []): PlanGroup => ({ name, nodes });
 const r = (x: number, y: number, w: number, h: number): Rect => ({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
 
-export function composePoster(input: ComposeInput): Plan {
-  if (input.category === 'prayer') return composeDailyPrayer(input);
+export function shouldRunCritique(): boolean {
+  return true; // always run visual critique after composition
+}
+
+export function composePoster(input: ComposeInput): Plan | Promise<Plan> {
+  if (input.category === 'prayer') return composeDailyPrayerEditorial(input);
+  return composePosterWithAnalysis(input);
+}
+
+async function composePosterWithAnalysis(input: ComposeInput): Promise<Plan> {
   const emphasis = decideEmphasis(input);
   const preset = pickPreset(input, emphasis);
   const seed = input.variationSeed;
@@ -239,8 +249,42 @@ export function composePoster(input: ComposeInput): Plan {
     footerG.nodes.push({ kind: 'photo', name: 'LEAD_LOGO', rect: r(safe.right - lw, footerY + Math.round((footerH - lw * 0.6) / 2), lw, Math.round(lw * 0.6)), path: leadLogo.path, mask: 'none', fit: 'contain' });
   }
 
+  // ── PHOTO ANALYSIS + HERO SELECTION ──────────────────────────────────────
+  // Before layout, analyze all photos to determine which should be the hero.
+  // Reorder the array so the best image is first (the layout engine treats
+  // index 0 as the hero). This makes the poster look like a human chose
+  // the strongest photo to lead the collage.
+  let photos = input.photos.slice(0, 12);
+  let photoOrientations: ('portrait' | 'landscape' | 'square')[] = [];
+  if (photos.length > 1) {
+    try {
+      const analysis = await analyzeBatch(photos.map(p => p.path));
+      photoOrientations = analysis.orientations;
+      // Move hero to front if not already there
+      if (analysis.heroIndex > 0) {
+        const heroPhoto = photos.splice(analysis.heroIndex, 1)[0];
+        photos = [heroPhoto, ...photos];
+        const heroOrientation = photoOrientations.splice(analysis.heroIndex, 1)[0];
+        photoOrientations = [heroOrientation, ...photoOrientations];
+      }
+    } catch {
+      // If analysis fails (e.g. sharp unavailable), just use default
+      photoOrientations = photos.map(() => 'portrait' as const);
+    }
+  } else if (photos.length === 1) {
+    photoOrientations = ['portrait'];
+  }
+  // Attach analysis results to photos for downstream use
+  const photoMeta = photos.map(p => ({
+    path: p.path,
+    name: p.name,
+    className: p.className,
+    zoom: p.zoom,
+    offsetX: p.offsetX,
+    offsetY: p.offsetY,
+  }));
+
   // ── 04/05/06 CONTENT + PHOTOS + DETAILS ──────────────────────────────────
-  const photos = input.photos.slice(0, 12);
   const detailLine = [input.details, input.venue].filter(Boolean).join('  ·  ');
   // Reserve the date/venue ribbon band so content and photos never sit under it.
   const detailBandH = detailLine ? Math.round(W * 0.042) + Math.round(S * 0.55) + S : 0;
@@ -307,7 +351,7 @@ export function composePoster(input: ComposeInput): Plan {
     const zone = r(safe.left, photoZoneY, safe.width, photoZoneH);
     const gap = Math.round(S * 0.6);
     const treatment = preset.photoTreatment;
-    let frames = photoLayout(photos.length, zone, gap, seed);
+    let frames = photoLayout(photos.length, zone, gap, seed, photoOrientations);
     if (treatment === 'circle' && photos.length <= 6) {
       // circles pack best as one centered row of equal medallions with labels
       const anyNames = photos.some((p) => p.name);
@@ -388,7 +432,26 @@ export function composePoster(input: ComposeInput): Plan {
 
   // §8 layer structure, bottom → top.
   const ordered: PlanGroup[] = [background, decoration, branding, headlineG, managementG, photosG, specialG, prayerG, programmeG, footerG, effectsG];
-  return { width: W, height: H, baseHex: pal.bgA, groups: ordered };
+  const plan: Plan = { width: W, height: H, baseHex: pal.bgA, groups: ordered };
+
+  // Run visual critique on the composed plan. The critique checks for
+  // human-like design qualities and returns scores + fix suggestions.
+  // The caller (posterGenerator) can use the report to decide whether
+  // to revise and regenerate.
+  try {
+    plan.metadata = plan.metadata || {};
+    const critique = critiquePoster(plan);
+    plan.metadata.critiqueScore = critique.score;
+    plan.metadata.critiqueReport = critique;
+    plan.metadata.photoCount = photos.length;
+    plan.metadata.heroFirst = photos.length > 0;
+  } catch {
+    // Critique is advisory — never fail composition because of it
+    plan.metadata = plan.metadata || {};
+    plan.metadata.critiqueScore = -1;
+  }
+
+  return plan;
 }
 
 // ── colour helpers ───────────────────────────────────────────────────────────

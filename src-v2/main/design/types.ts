@@ -14,6 +14,7 @@ export type PlanNode =
   | { kind: 'rect'; name: string; rect: Rect; hex: string; opacity?: number; radius?: number; effects?: Effects }
   | { kind: 'gradient'; name: string; rect: Rect; stops: GradientStop[]; angle: number; opacity?: number }
   | { kind: 'ellipse'; name: string; rect: Rect; hex: string; opacity?: number; effects?: Effects }
+  | { kind: 'polygon'; name: string; points: { x: number; y: number }[]; hex: string; opacity?: number; effects?: Effects }
   | {
       kind: 'text'; name: string; content: string; rect: Rect;
       font: string; size: number; minSize: number; maxLines: number;
@@ -39,6 +40,20 @@ export interface PlanGroup { name: string; nodes: PlanNode[]; opacity?: number; 
 export interface Plan {
   width: number; height: number; baseHex: string;
   groups: PlanGroup[]; // ordered bottom → top
+  metadata?: {
+    compositionFamily?: string;
+    requestedCompositionFamily?: string;
+    fallbackReason?: string;
+    rendererName?: string;
+    legacyRendererUsed?: boolean;
+    heroImagePath?: string;
+    assetUsage?: { used: string[]; missing: string[]; invalid: string[] };
+    // Visual critique metadata — added by composer after initial composition
+    critiqueScore?: number;
+    critiqueReport?: any; // VisualCritiqueReport — used by refinement loop
+    photoCount?: number;
+    heroFirst?: boolean;
+  };
 }
 
 export interface QualityWarning { code: string; message: string; nodeName?: string; severity: 'info' | 'warning' | 'error' }
@@ -86,7 +101,9 @@ export interface ManagementPerson {
 }
 
 export interface BrandAssetsInput {
-  mainLogo?: ResolvedAsset; leadLogo?: ResolvedAsset; background?: ResolvedAsset;
+  mainLogo?: ResolvedAsset; leadLogo?: ResolvedAsset;
+  studentPhoto?: ResolvedAsset; assemblyPhoto?: ResolvedAsset; campusPhoto?: ResolvedAsset;
+  background?: ResolvedAsset;
 }
 
 export interface ComposeInput {
@@ -98,6 +115,7 @@ export interface ComposeInput {
   prayer?: PrayerContent;
   width: number; height: number;
   variationSeed: number; // 0,1,2 → genuinely different compositions
+  requestedCompositionFamily?: string;
   // Brand-kit extensions. When present these override preset defaults so each
   // school uses its own colours, fonts and real logos instead of one template.
   brand?: BrandOptions;

@@ -172,6 +172,54 @@ p { color: #65758a; line-height: 1.5; }
 .profile-summary-lead { color: #b77a0a; font-weight: 650; }
 .profile-summary > button { white-space: nowrap; }
 
+/* ── Recent Edits ── */
+.recent-edits { margin-top: 24px; max-width: 980px; }
+.recent-edits .section-heading { align-items: center; flex-wrap: wrap; }
+.recent-edits h2 { margin-bottom: 0; }
+.recent-edits p { font-size: 12px; }
+.recent-edits-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.recent-edits-filters .search-input { width: 200px; padding: 7px 10px; font-size: 12px; }
+.recent-edits-filters select { width: auto; padding: 7px 10px; font-size: 12px; }
+.recent-edits-loading { padding: 40px 20px; color: #718198; text-align: center; font-size: 13px; }
+.recent-edits-empty { padding: 48px 20px; text-align: center; background: #fff; border: 1px dashed #c4d1e0; border-radius: 14px; }
+.recent-edits-empty h3 { color: #2c4767; margin-bottom: 8px; }
+.recent-edits-empty p { font-size: 13px; margin-bottom: 16px; }
+.recent-edits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px; }
+.recent-edit-card { display: grid; grid-template-rows: 180px auto; border: 1px solid #d6dfeb; border-radius: 13px; background: #fff; overflow: hidden; box-shadow: 0 4px 12px rgba(18, 40, 68, .06); transition: box-shadow .2s; }
+.recent-edit-card:hover { box-shadow: 0 8px 24px rgba(18, 40, 68, .12); }
+.recent-edit-thumb { overflow: hidden; background: #e8eef6; display: flex; align-items: center; justify-content: center; }
+.recent-edit-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.recent-edit-thumb-placeholder { color: #8a9cb2; font-size: 12px; }
+.recent-edit-body { display: grid; gap: 6px; padding: 14px; }
+.recent-edit-body h4 { margin: 0; font-size: 14px; color: #13243b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-edit-school { font-size: 11px; color: #5f738c; }
+.recent-edit-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 10px; color: #75869a; }
+.recent-edit-status { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #e8eef6; color: #4a607a; }
+.recent-edit-status.status-draft { background: #e8eef6; color: #4a607a; }
+.recent-edit-status.status-generating { background: #fff3d6; color: #8b6d1a; }
+.recent-edit-status.status-photoshop { background: #d6e6ff; color: #1d4e8f; }
+.recent-edit-status.status-psd { background: #d4f0e0; color: #1a7346; }
+.recent-edit-status.status-exported { background: #c8e6f5; color: #116894; }
+.recent-edit-status.status-approved { background: #c8f5d8; color: #0f6b3a; }
+.recent-edit-status.status-failed { background: #f5d8d8; color: #8f1d1d; }
+.recent-edit-status.status-missing { background: #f0e8d6; color: #7a631a; }
+.recent-edit-outputs { display: flex; gap: 4px; }
+.output-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; background: #edf2f8; color: #2d5580; border: 1px solid #d0dbea; }
+.recent-edit-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.recent-edit-actions button { padding: 5px 8px; font-size: 10px; }
+.recent-edits-footer { margin-top: 14px; text-align: center; }
+.recent-edits-footer button { color: #173e70; font-size: 12px; border: 0; background: transparent; text-decoration: underline; }
+
+/* ── Storage Settings ── */
+.storage-info { display: grid; gap: 12px; padding: 16px; border: 1px solid #d5dfeb; border-radius: 12px; background: #f8fafc; }
+.storage-path { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.storage-path b { font-size: 12px; color: #2c4767; white-space: nowrap; }
+.storage-path code { flex: 1; min-width: 0; overflow: hidden; padding: 6px 10px; border-radius: 6px; background: #eef3f8; font-size: 11px; color: #1c3858; text-overflow: ellipsis; white-space: nowrap; }
+.storage-stats { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 12px; color: #3d5773; }
+.migration-card { margin-top: 12px; padding: 16px; border: 1px solid #e0c87a; border-radius: 12px; background: #fffcf0; }
+.migration-card h4 { margin: 0 0 8px; font-size: 14px; color: #7a631a; }
+.migration-card code { display: block; margin: 6px 0; padding: 6px 10px; border-radius: 6px; background: #fff8e8; font-size: 11px; word-break: break-all; }
+
 @media (max-width: 1180px) {
   .app-shell { grid-template-columns: 190px minmax(0, 1fr); }
   .prayer-workspace { grid-template-columns: minmax(500px, 56%) minmax(350px, 44%); }

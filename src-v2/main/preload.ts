@@ -53,16 +53,29 @@ const posterApi = Object.freeze({
     ipcRenderer.on(progressChannel, wrapped);
     return () => { ipcRenderer.removeListener(progressChannel, wrapped); };
   },
+  // ── Poster Brain (learning system) ──
+  brainApprove: (posterId: string) => ipcRenderer.invoke(channels.brainApprove, { posterId }),
+  brainReject: (posterId: string, reasons: string[], note: string) => ipcRenderer.invoke(channels.brainReject, { posterId, reasons, note }),
+  brainCorrect: (posterId: string, corrections: unknown, note: string) => ipcRenderer.invoke(channels.brainCorrect, { posterId, corrections, note }),
+  brainCompare: (posterAId: string, posterBId: string, winner: 'A' | 'B' | 'none', reason: string) => ipcRenderer.invoke(channels.brainCompare, { posterAId, posterBId, winner, reason }),
+  brainStats: () => ipcRenderer.invoke(channels.brainStats),
+  brainListRecords: (category?: string) => ipcRenderer.invoke(channels.brainListRecords, { category }),
+  brainLoadRecord: (posterId: string) => ipcRenderer.invoke(channels.brainLoadRecord, { posterId }),
+  brainRecordOutput: (posterId: string, finalPath: string, visualCritique?: number, qualityGate?: number) => ipcRenderer.invoke(channels.brainRecordOutput, { posterId, finalPath, visualCritique, qualityGate }),
   // ── Storage ──
   getStorageSettings: () => ipcRenderer.invoke(channels.getStorageSettings),
   chooseStorageRoot: () => ipcRenderer.invoke(channels.chooseStorageRoot),
   validateStorageRoot: (path: string) => ipcRenderer.invoke(channels.validateStorageRoot, { path }),
   estimateMigration: (path: string) => ipcRenderer.invoke(channels.estimateMigration, { path }),
-  migrateStorage: (path: string) => ipcRenderer.invoke(channels.migrateStorage, { path }),
+  migrateStorage: (path: string, migrateExisting?: boolean) => ipcRenderer.invoke(channels.migrateStorage, { path, migrateExisting }),
   openStorageRoot: () => ipcRenderer.invoke(channels.openStorageRoot),
   getStorageUsage: () => ipcRenderer.invoke(channels.getStorageUsage),
   clearCache: () => ipcRenderer.invoke(channels.clearCache),
   clearTemp: () => ipcRenderer.invoke(channels.clearTemp),
+  // ── Recent Edits ──
+  listRecentEdits: (schoolId?: string, limit?: number) => ipcRenderer.invoke(channels.listRecentEdits, { schoolId, limit }),
+  loadJobRecord: (jobId: string) => ipcRenderer.invoke(channels.loadJobRecord, { jobId }),
+  openFileLocation: (filePath: string) => ipcRenderer.invoke(channels.openFileLocation, { filePath }),
   // ── History ──
   historyList: () => ipcRenderer.invoke(channels.historyList),
   historyDelete: (id: string, removeFiles: boolean) => ipcRenderer.invoke(channels.historyDelete, { id, removeFiles }),

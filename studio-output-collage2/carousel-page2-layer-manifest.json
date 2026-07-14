@@ -1,0 +1,406 @@
+{
+  "format": "snhs-studio-layer-manifest/v1",
+  "width": 1080,
+  "height": 1350,
+  "omitEmptyGroups": true,
+  "groups": [
+    {
+      "name": "00_BACKGROUND",
+      "nodeCount": 1,
+      "textLayers": 0,
+      "smartObjects": 0,
+      "vectorLayers": 1,
+      "frameLayers": 0
+    },
+    {
+      "name": "01_HEADER_IDENTITY",
+      "nodeCount": 8,
+      "textLayers": 4,
+      "smartObjects": 1,
+      "vectorLayers": 3,
+      "frameLayers": 0
+    },
+    {
+      "name": "02_VERIFIED_ACTIVITY_PHOTOS",
+      "nodeCount": 7,
+      "textLayers": 3,
+      "smartObjects": 2,
+      "vectorLayers": 2,
+      "frameLayers": 2
+    },
+    {
+      "name": "03_TODAYS_PROCEEDINGS_RAIL",
+      "nodeCount": 22,
+      "textLayers": 21,
+      "smartObjects": 0,
+      "vectorLayers": 1,
+      "frameLayers": 0
+    },
+    {
+      "name": "04_FOOTER_BRANDING",
+      "nodeCount": 11,
+      "textLayers": 5,
+      "smartObjects": 2,
+      "vectorLayers": 4,
+      "frameLayers": 0
+    }
+  ],
+  "totals": {
+    "groups": 5,
+    "sourceNodes": 49,
+    "photoshopLayers": 51,
+    "textLayers": 33,
+    "smartObjects": 5,
+    "vectorLayers": 13
+  },
+  "layers": [
+    {
+      "group": "00_BACKGROUND",
+      "name": "SHAPE_01",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_HEADER_IDENTITY",
+      "name": "SHAPE_01",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_HEADER_IDENTITY",
+      "name": "SHAPE_02",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_HEADER_IDENTITY",
+      "name": "LOGO_03_school logo",
+      "type": "image",
+      "source": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\school logo.png",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "01_HEADER_IDENTITY",
+      "name": "TEXT_04_SRI NARAYANA HIGH SCHOOL",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_HEADER_IDENTITY",
+      "name": "TEXT_05_DAILY PRAYER • PROCEEDINGS",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_HEADER_IDENTITY",
+      "name": "TEXT_06_13 July 2026 • Monday",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_HEADER_IDENTITY",
+      "name": "SHAPE_07",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "01_HEADER_IDENTITY",
+      "name": "TEXT_08_2 / 2",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_VERIFIED_ACTIVITY_PHOTOS",
+      "name": "TEXT_01_VERIFIED MOMENTS FROM THE MORNING",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_VERIFIED_ACTIVITY_PHOTOS",
+      "name": "PHOTO_02_assembly",
+      "type": "image",
+      "source": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\assembly.jpg",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "02_VERIFIED_ACTIVITY_PHOTOS",
+      "name": "SHAPE_03",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_VERIFIED_ACTIVITY_PHOTOS",
+      "name": "TEXT_04_PRAYER SONG",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_VERIFIED_ACTIVITY_PHOTOS",
+      "name": "PHOTO_05_student",
+      "type": "image",
+      "source": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\student.jpg",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "02_VERIFIED_ACTIVITY_PHOTOS",
+      "name": "SHAPE_06",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "02_VERIFIED_ACTIVITY_PHOTOS",
+      "name": "TEXT_07_NEWS HEADLINES",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_01_TODAY'S COMPLETE PROCEEDINGS",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "RULE_02",
+      "type": "line",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_03_01",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_04_Prayer Song",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_05_PHOTO",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_06_02",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_07_Pledge",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_08_03",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_09_News Headlines",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_10_PHOTO",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_11_04",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_12_Thought of the Day",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_13_05",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_14_Word of the Day",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_15_06",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_16_Quiz Question",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_17_07",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_18_Birthday Wishes",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_19_08",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_20_Principal's Message",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_21_09",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "03_TODAYS_PROCEEDINGS_RAIL",
+      "name": "TEXT_22_National Anthem",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "SHAPE_01",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "SHAPE_02",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "SHAPE_03",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "LOGO_04_school logo",
+      "type": "image",
+      "source": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\school logo.png",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "TEXT_05_SRI ADARSHAVANI GROUP OF SCHOOLS",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "TEXT_06_Ghanpur | Duggondi | Nallabelly",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "TEXT_07_TEL 6300038389 | 8121063032 | 9032480165",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "TEXT_08_“Education is not the learning of facts, but the training of the mind ",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "SHAPE_09",
+      "type": "rect",
+      "editable": true,
+      "smartObject": false
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "LOGO_10_lead-keyed",
+      "type": "image",
+      "source": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\lead-keyed.png",
+      "editable": false,
+      "smartObject": true
+    },
+    {
+      "group": "04_FOOTER_BRANDING",
+      "name": "TEXT_11_Powered by LEAD",
+      "type": "text",
+      "editable": true,
+      "smartObject": false
+    }
+  ]
+}

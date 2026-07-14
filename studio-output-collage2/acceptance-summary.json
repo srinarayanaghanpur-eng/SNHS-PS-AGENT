@@ -1,0 +1,142 @@
+{
+  "requestedMode": "automatic",
+  "automaticallySelectedMode": "single-page-compact",
+  "renderedMode": "single-page-compact",
+  "distinctPhotoCount": 3,
+  "programmeCount": 9,
+  "variants": {
+    "A_compactComplete": {
+      "pass": true,
+      "coverage": {
+        "pass": true,
+        "rendered": [
+          "Prayer Song",
+          "Pledge",
+          "News Headlines",
+          "Thought of the Day",
+          "Word of the Day",
+          "Quiz Question",
+          "Birthday Wishes",
+          "Principal's Message",
+          "National Anthem"
+        ],
+        "missing": [],
+        "rejectionCode": null
+      },
+      "mobileAudit": {
+        "pass": true,
+        "exportWidth": 360,
+        "scale": 0.3333333333333333,
+        "minima": {
+          "schoolName": 16.666666666666664,
+          "programme": 5.333333333333333,
+          "footer": 5,
+          "activityLabels": 6.666666666666666
+        },
+        "thresholds": {
+          "schoolName": 13,
+          "programme": 4.5,
+          "footer": 4.5,
+          "activityLabels": 5
+        },
+        "failures": []
+      },
+      "file": "compact-complete.png"
+    },
+    "B_photoRich": {
+      "available": false,
+      "pass": false,
+      "rejectionCode": "INSUFFICIENT_DISTINCT_PHOTOS",
+      "required": 7,
+      "availableCount": 3,
+      "detail": "A photo-rich acceptance image was not rendered because doing so would require repeated or invented moments."
+    },
+    "C_twoPageCarousel": {
+      "pass": true,
+      "coverage": {
+        "pass": true,
+        "rendered": [
+          "Prayer Song",
+          "Pledge",
+          "News Headlines",
+          "Thought of the Day",
+          "Word of the Day",
+          "Quiz Question",
+          "Birthday Wishes",
+          "Principal's Message",
+          "National Anthem"
+        ],
+        "missing": [],
+        "rejectionCode": null
+      },
+      "noPhotoReuse": true,
+      "assignments": [
+        {
+          "page": 1,
+          "ids": [
+            "hero-assembly"
+          ]
+        },
+        {
+          "page": 2,
+          "ids": [
+            "activity-assembly-jpg",
+            "activity-student-jpg"
+          ]
+        }
+      ],
+      "mobileAudit": {
+        "page1": {
+          "pass": true,
+          "exportWidth": 360,
+          "scale": 0.3333333333333333,
+          "minima": {
+            "schoolName": 16.666666666666664,
+            "programme": null,
+            "footer": 5,
+            "activityLabels": 6.666666666666666
+          },
+          "thresholds": {
+            "schoolName": 13,
+            "programme": 4.5,
+            "footer": 4.5,
+            "activityLabels": 5
+          },
+          "failures": []
+        },
+        "page2": {
+          "pass": true,
+          "exportWidth": 360,
+          "scale": 0.3333333333333333,
+          "minima": {
+            "schoolName": 15,
+            "programme": 7.333333333333333,
+            "footer": 5,
+            "activityLabels": 6.333333333333333
+          },
+          "thresholds": {
+            "schoolName": 13,
+            "programme": 4.5,
+            "footer": 4.5,
+            "activityLabels": 5
+          },
+          "failures": []
+        }
+      },
+      "files": [
+        "carousel-page1.png",
+        "carousel-page2.png"
+      ]
+    }
+  },
+  "assertions": {
+    "noDuplicateMoments": true,
+    "noPlaceholders": true,
+    "noProgrammeItemsDroppedInCompleteLayouts": true,
+    "photoRichNotFakedWhenInsufficient": true
+  },
+  "eventConsistency": {
+    "status": "input-declared-not-metadata-verifiable",
+    "detail": "The accepted assets were supplied to this event run, but they contain no shared event ID or capture-time sidecar to prove single-event provenance automatically."
+  }
+}

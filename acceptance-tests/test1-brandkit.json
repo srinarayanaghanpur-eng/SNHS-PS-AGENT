@@ -1,0 +1,35 @@
+{
+  "assets": {
+    "mainLogo": "C:/Users/ADMIN/Desktop/SNHS-PS-AGENT-main/acceptance-assets/school-logo.png",
+    "leadLogo": "C:/Users/ADMIN/Desktop/SNHS-PS-AGENT-main/acceptance-assets/lead-logo.png",
+    "assemblyPhoto": "C:/Users/ADMIN/Desktop/SNHS-PS-AGENT-main/acceptance-assets/assembly.jpg",
+    "studentPhoto": "C:/Users/ADMIN/Desktop/SNHS-PS-AGENT-main/acceptance-assets/student.jpg"
+  },
+  "request": {
+    "category": "prayer",
+    "headline": "DAILY PRAYER PROCEEDINGS",
+    "subheadline": "A meaningful start to the school day",
+    "message": "Let us begin the day with discipline, confidence and positive thoughts.",
+    "details": "14 July 2026",
+    "width": 1080,
+    "height": 1350,
+    "variations": 1,
+    "exportPng": true,
+    "requestedCompositionFamily": "fullBleedAssemblyEditorial",
+    "prayer": {
+      "day": "Tuesday",
+      "prayerTitle": "Morning Prayer",
+      "programme": [
+        "Prayer Song",
+        "Pledge",
+        "Thought for the Day",
+        "News Headlines",
+        "Word of the Day",
+        "Quiz Question",
+        "Birthday Wishes",
+        "Principal's Message",
+        "National Anthem"
+      ]
+    }
+  }
+}

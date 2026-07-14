@@ -1,5 +1,18 @@
 // Layout intelligence ported from V1 (safeAreaCalculator, cardLayoutEngine,
 // collisionDetector, qualityValidator) as pure functions on the plan model.
+//
+// Human-like collage layout engine — the core change that makes posters look
+// like a human school designer arranged them, not a template grid.
+//
+// Key design decisions:
+//   1. The FIRST photo (or the highest-importance photo) is always the hero.
+//      It occupies 45-65% of the photo zone, dominating the composition.
+//   2. Supporting photos vary in size — not equal frames.
+//   3. Asymmetry is intentional: portrait/landscape orientation changes
+//      how photos nest beside each other.
+//   4. Gaps are tighter for a natural collage feel; generous margins
+//      separate the photo block from text to avoid a cluttered look.
+//   5. For 9+ photos a card grid is still used, but row heights vary.
 
 import type { Rect } from './types';
 
@@ -33,51 +46,172 @@ export function contrastRatio(hexA: string, hexB: string): number {
   return (l1 + 0.05) / (l2 + 0.05);
 }
 
-// ── Adaptive photo layouts ──────────────────────────────────────────────────
-// Returns frames for n photos inside `zone`, with importance-weighted sizing.
-// 1 → hero; 2 → split; 3 → one large + two stacked; 4 → grid;
-// 5–8 → mixed collage; 9–12 → student card grid. Callers page >12.
+// ── Human-like collage photo layouts ────────────────────────────────────────
+// Returns frames for n photos inside `zone`. Unlike a template grid, this
+// function creates a clear visual hierarchy: one hero dominates, supporting
+// photos vary in size, and the arrangement feels organic.
 
 export interface PhotoFrame extends Rect { importanceScale: number; labelBelow: boolean }
 
-export function photoLayout(n: number, zone: Rect, gap: number, seed = 0): PhotoFrame[] {
+/**
+ * Human-like collage photo layout.
+ *
+ * `heroIndex` (default 0) picks which photo is the hero. Higher
+ * `importanceScale` frames get larger relative sizing.
+ * `orientations` (default all landscape) hints whether each photo is portrait
+ * or landscape so the collage can nest photos better.
+ */
+export function photoLayout(
+  n: number,
+  zone: Rect,
+  gap: number,
+  seed = 0,
+  orientations: ('portrait' | 'landscape' | 'square')[] = [],
+): PhotoFrame[] {
   if (n <= 0) return [];
   const frames: PhotoFrame[] = [];
   const put = (x: number, y: number, w: number, h: number, s = 1, label = false) =>
     frames.push({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), importanceScale: s, labelBelow: label });
 
+  const Z = zone;
+  const g = gap;
+  const isPort = (i: number) => (orientations[i] || 'landscape') === 'portrait';
+  const portCount = orientations.filter(o => o === 'portrait').length;
+  const allPortrait = portCount === n;
+  const allLandscape = portCount === 0;
+
   if (n === 1) {
-    const w = Math.min(zone.w * 0.72, zone.h * 0.9);
-    put(zone.x + (zone.w - w) / 2, zone.y + (zone.h - Math.min(zone.h, w * 1.05)) / 2, w, Math.min(zone.h, w * 1.05), 1.4);
+    // Single hero — large, centered, never cropped too tight
+    const maxW = Z.w * 0.78;
+    const maxH = Z.h * 0.92;
+    const w = isPort(0) ? Math.min(maxW * 0.7, maxH * 0.65) : Math.min(maxW, maxH * 1.3);
+    const h = Math.min(maxH, w * (isPort(0) ? 1.3 : 0.8));
+    put(Z.x + (Z.w - w) / 2, Z.y + (Z.h - h) / 2, w, h, 1.5);
+
   } else if (n === 2) {
-    const w = (zone.w - gap) / 2;
-    put(zone.x, zone.y, w, zone.h, 1.1); put(zone.x + w + gap, zone.y, w, zone.h, 1.1);
-  } else if (n === 3) {
-    if (seed % 2 === 0) {
-      const bigW = zone.w * 0.58;
-      put(zone.x, zone.y, bigW, zone.h, 1.3);
-      const smallH = (zone.h - gap) / 2; const sx = zone.x + bigW + gap;
-      put(sx, zone.y, zone.w - bigW - gap, smallH); put(sx, zone.y + smallH + gap, zone.w - bigW - gap, smallH);
+    // Two photos: hero on left or top (60-65%), second fills remaining
+    if (isPort(0) || (seed % 3 === 0 && !allLandscape)) {
+      // Stack vertically: hero top, second below
+      const heroH = Z.h * 0.62;
+      put(Z.x, Z.y, Z.w, heroH, 1.3);
+      put(Z.x, Z.y + heroH + g, Z.w, Z.h - heroH - g, 1.0);
+    } else if (seed % 2 === 0 || isPort(1)) {
+      // Hero left, second right
+      const heroW = Z.w * 0.62;
+      put(Z.x, Z.y, heroW, Z.h, 1.3);
+      put(Z.x + heroW + g, Z.y, Z.w - heroW - g, Z.h, 1.0);
     } else {
-      const w = (zone.w - 2 * gap) / 3;
-      for (let i = 0; i < 3; i++) put(zone.x + i * (w + gap), zone.y + (i === 1 ? 0 : zone.h * 0.08), w, zone.h * (i === 1 ? 1 : 0.84), i === 1 ? 1.2 : 1);
+      // Hero right, second left (asymmetric variation)
+      const heroW = Z.w * 0.58;
+      put(Z.x + Z.w - heroW, Z.y, heroW, Z.h, 1.3);
+      put(Z.x, Z.y, Z.w - heroW - g, Z.h, 1.0);
     }
+
+  } else if (n === 3) {
+    // Three: hero dominant (50-55%) + two smaller stacked
+    if (isPort(0) && !allPortrait) {
+      // Hero portrait on left, two landscape stacked on right
+      const heroW = Z.w * 0.52;
+      put(Z.x, Z.y, heroW, Z.h, 1.4);
+      const smallH = (Z.h - g) / 2;
+      put(Z.x + heroW + g, Z.y, Z.w - heroW - g, smallH, 0.9);
+      put(Z.x + heroW + g, Z.y + smallH + g, Z.w - heroW - g, smallH, 0.9);
+    } else if (allLandscape && seed % 3 === 1) {
+      // Three columns with middle dominant
+      const w = (Z.w - 2 * g) / 3;
+      put(Z.x, Z.y + Z.h * 0.08, w, Z.h * 0.84, 1.0);
+      put(Z.x + w + g, Z.y, w, Z.h, 1.3);
+      put(Z.x + 2 * (w + g), Z.y + Z.h * 0.08, w, Z.h * 0.84, 1.0);
+    } else {
+      // Hero top spanning width, two smaller below
+      const heroH = Z.h * 0.55;
+      put(Z.x, Z.y, Z.w, heroH, 1.3);
+      const smallW = (Z.w - g) / 2;
+      put(Z.x, Z.y + heroH + g, smallW, Z.h - heroH - g, 0.9);
+      put(Z.x + smallW + g, Z.y + heroH + g, smallW, Z.h - heroH - g, 0.9);
+    }
+
   } else if (n === 4) {
-    const w = (zone.w - gap) / 2; const h = (zone.h - gap) / 2;
-    for (let i = 0; i < 4; i++) put(zone.x + (i % 2) * (w + gap), zone.y + Math.floor(i / 2) * (h + gap), w, h);
+    // Four: hero dominates one quadrant, three smaller in L-shape
+    if (seed % 3 === 0 && !allPortrait) {
+      // Hero top-left large, three in right column + bottom row
+      const heroW = Z.w * 0.58;
+      const heroH = Z.h * 0.58;
+      put(Z.x, Z.y, heroW, heroH, 1.4);
+      const smallW = Z.w - heroW - g;
+      const smallH = (Z.h - g) / 2;
+      put(Z.x + heroW + g, Z.y, smallW, heroH, 0.9);
+      put(Z.x, Z.y + heroH + g, heroW, Z.h - heroH - g, 0.8);
+      put(Z.x + heroW + g, Z.y + heroH + g, smallW, Z.h - heroH - g, 0.8);
+    } else if (allPortrait) {
+      // Four portraits: 2x2 but hero is notably larger
+      const heroW = Z.w * 0.56;
+      const heroH = Z.h * 0.56;
+      put(Z.x, Z.y, heroW, heroH, 1.3);
+      put(Z.x + heroW + g, Z.y, Z.w - heroW - g, heroH, 0.9);
+      put(Z.x, Z.y + heroH + g, Z.w, Z.h - heroH - g, 0.7);
+    } else {
+      // Top row: hero + one, bottom row: two equal
+      const heroW = Z.w * 0.55;
+      put(Z.x, Z.y, heroW, Z.h * 0.55, 1.3);
+      put(Z.x + heroW + g, Z.y, Z.w - heroW - g, Z.h * 0.55, 0.9);
+      const botW = (Z.w - g) / 2;
+      put(Z.x, Z.y + Z.h * 0.55 + g, botW, Z.h * 0.45 - g, 0.8);
+      put(Z.x + botW + g, Z.y + Z.h * 0.55 + g, botW, Z.h * 0.45 - g, 0.8);
+    }
+
   } else if (n <= 8) {
-    // collage: hero row of 2 larger + remaining in a tighter row(s)
-    const heroH = zone.h * 0.55; const w2 = (zone.w - gap) / 2;
-    put(zone.x, zone.y, w2, heroH, 1.2); put(zone.x + w2 + gap, zone.y, w2, heroH, 1.2);
-    const rest = n - 2; const w3 = (zone.w - (rest - 1) * gap) / rest;
-    for (let i = 0; i < rest; i++) put(zone.x + i * (w3 + gap), zone.y + heroH + gap, w3, zone.h - heroH - gap, 0.9);
+    // 5-8: Collage with clear hero + supporting row(s).
+    // Hero is always the largest; supporting photos may have two sizes.
+    const heroH = isPort(0) ? Z.h : Z.h * 0.58;
+    const heroW = isPort(0) ? Z.w * 0.48 : Z.w * 0.55;
+    put(Z.x, Z.y, heroW, heroH, 1.3);
+
+    const rest = n - 1;
+    const secondaryW = Z.w - heroW - g;
+    const rightCols = rest <= 2 ? rest : (rest <= 4 ? 2 : 3);
+    const rightGaps = (rightCols - 1) * g;
+    const cellW = (secondaryW - rightGaps) / rightCols;
+    const rightRows = Math.ceil(rest / rightCols);
+    const cellH = (heroH - (rightRows - 1) * g) / rightRows;
+
+    for (let i = 0; i < rest; i++) {
+      const col = i % rightCols;
+      const row = Math.floor(i / rightCols);
+      const x = Z.x + heroW + g + col * (cellW + g);
+      const y = Z.y + row * (cellH + g);
+      const s = i === 0 ? 1.0 : 0.8;
+      put(x, y, cellW, cellH, s);
+    }
+
   } else {
-    // student cards, up to 12: 3 or 4 columns with name labels below
-    const cols = n <= 9 ? 3 : 4; const rows = Math.ceil(n / cols);
-    const w = (zone.w - (cols - 1) * gap) / cols;
-    const h = (zone.h - (rows - 1) * gap) / rows;
-    for (let i = 0; i < n; i++) {
-      put(zone.x + (i % cols) * (w + gap), zone.y + Math.floor(i / cols) * (h + gap), w, h, 0.8, true);
+    // 9-12: Student card grid with name labels.
+    // Row heights vary slightly so it doesn't look like a spreadsheet.
+    const cols = n <= 9 ? 3 : 4;
+    const rows = Math.ceil(n / cols);
+    const rowGaps = (rows - 1) * g;
+    const colGaps = (cols - 1) * g;
+    const baseW = (Z.w - colGaps) / cols;
+    // Vary row heights: first row gets 5% extra (hero row), last row 5% less
+    const rowHeights: number[] = [];
+    for (let r = 0; r < rows; r++) {
+      const extra = r === 0 ? 1.1 : r === rows - 1 ? 0.9 : 1.0;
+      rowHeights.push(((Z.h - rowGaps) / rows) * extra);
+    }
+    // Re-normalize to fit
+    const totalH = rowHeights.reduce((a, b) => a + b, 0);
+    const norm = (Z.h - rowGaps) / totalH;
+    let yAccum = 0;
+    for (let r = 0; r < rows; r++) {
+      const h = rowHeights[r] * norm;
+      for (let c = 0; c < cols; c++) {
+        const i = r * cols + c;
+        if (i >= n) break;
+        const x = Z.x + c * (baseW + g);
+        const y = Z.y + yAccum;
+        put(x, y, baseW, h, r === 0 ? 0.9 : 0.8, true);
+      }
+      yAccum += h + g;
     }
   }
   return frames;

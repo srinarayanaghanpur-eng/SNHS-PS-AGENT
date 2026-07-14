@@ -1,0 +1,773 @@
+{
+  "rules": {
+    "similarityThreshold": 0.88,
+    "minQuality": 52,
+    "minRoleConfidence": 0.68,
+    "maxSupport": 3,
+    "maxGallery": 8
+  },
+  "selected": [
+    {
+      "id": "hero-assembly",
+      "assetId": "hero-assembly",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\hero-enhanced-1784013580972.jpg",
+      "sourcePath": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "detectedActivity": "wide_assembly",
+      "confidence": 0.96,
+      "assignedLabel": "Morning Assembly",
+      "role": {
+        "role": "wide_assembly",
+        "label": "Morning Assembly",
+        "confidence": 0.96,
+        "evidence": [
+          "wide_assembly: wide assembly signal",
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 1600,
+        "height": 738,
+        "megapixels": 1.18,
+        "aspectRatio": 2.168,
+        "orientation": "landscape",
+        "sharpness": 4.332,
+        "entropy": 7.684,
+        "contrast": 59.224,
+        "subjectCompleteness": 0.82,
+        "qualityScore": 82
+      }
+    },
+    {
+      "id": "activity-assembly-jpg",
+      "assetId": "activity-assembly-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\assembly.jpg",
+      "momentId": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\assembly.jpg",
+      "detectedActivity": "prayer_song",
+      "confidence": 0.97,
+      "assignedLabel": "Prayer Song",
+      "role": {
+        "role": "prayer_song",
+        "label": "Prayer Song",
+        "confidence": 0.97,
+        "evidence": [
+          "assembled_standing: filename",
+          "wide_assembly: wide assembly signal",
+          "assembled_standing: assembled-standing signal",
+          "prayer_song: prayer gesture"
+        ]
+      },
+      "technical": {
+        "width": 3600,
+        "height": 1950,
+        "megapixels": 7.02,
+        "aspectRatio": 1.846,
+        "orientation": "landscape",
+        "sharpness": 1.379,
+        "entropy": 7.334,
+        "contrast": 75.381,
+        "subjectCompleteness": 0.84,
+        "qualityScore": 83
+      }
+    },
+    {
+      "id": "activity-student-jpg",
+      "assetId": "activity-student-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\student.jpg",
+      "momentId": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\student.jpg",
+      "detectedActivity": "news_headlines",
+      "confidence": 0.96,
+      "assignedLabel": "News Headlines",
+      "role": {
+        "role": "news_headlines",
+        "label": "News Headlines",
+        "confidence": 0.96,
+        "evidence": [
+          "news_headlines: microphone plus paper"
+        ]
+      },
+      "technical": {
+        "width": 900,
+        "height": 1700,
+        "megapixels": 1.53,
+        "aspectRatio": 0.529,
+        "orientation": "portrait",
+        "sharpness": 2.181,
+        "entropy": 7.463,
+        "contrast": 79.423,
+        "subjectCompleteness": 0.84,
+        "qualityScore": 81
+      }
+    }
+  ],
+  "rejected": [
+    {
+      "id": "derived-subject4-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject4.jpg",
+      "reason": "same-moment",
+      "similarity": 1,
+      "kept": "hero-assembly"
+    },
+    {
+      "id": "derived-subject3-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject3.jpg",
+      "reason": "same-moment",
+      "similarity": 1,
+      "kept": "hero-assembly"
+    },
+    {
+      "id": "derived-subject1-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject1.jpg",
+      "reason": "same-moment",
+      "similarity": 1,
+      "kept": "hero-assembly"
+    },
+    {
+      "id": "derived-subject2-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject2.jpg",
+      "reason": "same-moment",
+      "similarity": 1,
+      "kept": "hero-assembly"
+    },
+    {
+      "id": "derived-subject6-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject6.jpg",
+      "reason": "same-moment",
+      "similarity": 1,
+      "kept": "hero-assembly"
+    },
+    {
+      "id": "derived-subject5-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject5.jpg",
+      "reason": "same-moment",
+      "similarity": 1,
+      "kept": "hero-assembly"
+    },
+    {
+      "id": "derived-subject7-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject7.jpg",
+      "reason": "same-moment",
+      "similarity": 1,
+      "kept": "hero-assembly"
+    },
+    {
+      "id": "derived-leader-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\leader.jpg",
+      "reason": "weak-photo",
+      "qualityScore": 38
+    }
+  ],
+  "similarityMatrix": [
+    {
+      "a": "hero-assembly",
+      "b": "activity-assembly-jpg",
+      "score": 0.617,
+      "reason": "perceptual"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "activity-student-jpg",
+      "score": 0.466,
+      "reason": "perceptual"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "derived-leader-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "derived-subject1-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "derived-subject2-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "derived-subject3-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "derived-subject4-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "derived-subject5-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "derived-subject6-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "hero-assembly",
+      "b": "derived-subject7-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "activity-student-jpg",
+      "score": 0.559,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "derived-leader-jpg",
+      "score": 0.678,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "derived-subject1-jpg",
+      "score": 0.517,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "derived-subject2-jpg",
+      "score": 0.583,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "derived-subject3-jpg",
+      "score": 0.599,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "derived-subject4-jpg",
+      "score": 0.476,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "derived-subject5-jpg",
+      "score": 0.528,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "derived-subject6-jpg",
+      "score": 0.498,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-assembly-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 0.576,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-student-jpg",
+      "b": "derived-leader-jpg",
+      "score": 0.515,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-student-jpg",
+      "b": "derived-subject1-jpg",
+      "score": 0.558,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-student-jpg",
+      "b": "derived-subject2-jpg",
+      "score": 0.587,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-student-jpg",
+      "b": "derived-subject3-jpg",
+      "score": 0.601,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-student-jpg",
+      "b": "derived-subject4-jpg",
+      "score": 0.551,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-student-jpg",
+      "b": "derived-subject5-jpg",
+      "score": 0.615,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-student-jpg",
+      "b": "derived-subject6-jpg",
+      "score": 0.57,
+      "reason": "perceptual"
+    },
+    {
+      "a": "activity-student-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 0.553,
+      "reason": "perceptual"
+    },
+    {
+      "a": "derived-leader-jpg",
+      "b": "derived-subject1-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-leader-jpg",
+      "b": "derived-subject2-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-leader-jpg",
+      "b": "derived-subject3-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-leader-jpg",
+      "b": "derived-subject4-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-leader-jpg",
+      "b": "derived-subject5-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-leader-jpg",
+      "b": "derived-subject6-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-leader-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject1-jpg",
+      "b": "derived-subject2-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject1-jpg",
+      "b": "derived-subject3-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject1-jpg",
+      "b": "derived-subject4-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject1-jpg",
+      "b": "derived-subject5-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject1-jpg",
+      "b": "derived-subject6-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject1-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject2-jpg",
+      "b": "derived-subject3-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject2-jpg",
+      "b": "derived-subject4-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject2-jpg",
+      "b": "derived-subject5-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject2-jpg",
+      "b": "derived-subject6-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject2-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject3-jpg",
+      "b": "derived-subject4-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject3-jpg",
+      "b": "derived-subject5-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject3-jpg",
+      "b": "derived-subject6-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject3-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject4-jpg",
+      "b": "derived-subject5-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject4-jpg",
+      "b": "derived-subject6-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject4-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject5-jpg",
+      "b": "derived-subject6-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject5-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    },
+    {
+      "a": "derived-subject6-jpg",
+      "b": "derived-subject7-jpg",
+      "score": 1,
+      "reason": "same-source-moment"
+    }
+  ],
+  "allCandidates": [
+    {
+      "id": "hero-assembly",
+      "path": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "wide_assembly",
+        "label": "Morning Assembly",
+        "confidence": 0.96,
+        "evidence": [
+          "wide_assembly: wide assembly signal",
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 1600,
+        "height": 738,
+        "megapixels": 1.18,
+        "aspectRatio": 2.168,
+        "orientation": "landscape",
+        "sharpness": 4.332,
+        "entropy": 7.684,
+        "contrast": 59.224,
+        "subjectCompleteness": 0.82,
+        "qualityScore": 82
+      }
+    },
+    {
+      "id": "activity-assembly-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\assembly.jpg",
+      "momentId": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\assembly.jpg",
+      "role": {
+        "role": "prayer_song",
+        "label": "Prayer Song",
+        "confidence": 0.97,
+        "evidence": [
+          "assembled_standing: filename",
+          "wide_assembly: wide assembly signal",
+          "assembled_standing: assembled-standing signal",
+          "prayer_song: prayer gesture"
+        ]
+      },
+      "technical": {
+        "width": 3600,
+        "height": 1950,
+        "megapixels": 7.02,
+        "aspectRatio": 1.846,
+        "orientation": "landscape",
+        "sharpness": 1.379,
+        "entropy": 7.334,
+        "contrast": 75.381,
+        "subjectCompleteness": 0.84,
+        "qualityScore": 83
+      }
+    },
+    {
+      "id": "activity-student-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\student.jpg",
+      "momentId": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\acceptance-assets\\student.jpg",
+      "role": {
+        "role": "news_headlines",
+        "label": "News Headlines",
+        "confidence": 0.96,
+        "evidence": [
+          "news_headlines: microphone plus paper"
+        ]
+      },
+      "technical": {
+        "width": 900,
+        "height": 1700,
+        "megapixels": 1.53,
+        "aspectRatio": 0.529,
+        "orientation": "portrait",
+        "sharpness": 2.181,
+        "entropy": 7.463,
+        "contrast": 79.423,
+        "subjectCompleteness": 0.84,
+        "qualityScore": 81
+      }
+    },
+    {
+      "id": "derived-leader-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\leader.jpg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "assembled_standing",
+        "label": "Students Assembled",
+        "confidence": 0.86,
+        "evidence": [
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 200,
+        "height": 440,
+        "megapixels": 0.09,
+        "aspectRatio": 0.455,
+        "orientation": "portrait",
+        "sharpness": 1.352,
+        "entropy": 6.983,
+        "contrast": 40.418,
+        "subjectCompleteness": 0.3,
+        "qualityScore": 38
+      }
+    },
+    {
+      "id": "derived-subject1-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject1.jpg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "assembled_standing",
+        "label": "Students Assembled",
+        "confidence": 0.86,
+        "evidence": [
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 260,
+        "height": 410,
+        "megapixels": 0.11,
+        "aspectRatio": 0.634,
+        "orientation": "portrait",
+        "sharpness": 3.218,
+        "entropy": 7.396,
+        "contrast": 51.443,
+        "subjectCompleteness": 0.6,
+        "qualityScore": 62
+      }
+    },
+    {
+      "id": "derived-subject2-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject2.jpg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "assembled_standing",
+        "label": "Students Assembled",
+        "confidence": 0.86,
+        "evidence": [
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 250,
+        "height": 420,
+        "megapixels": 0.1,
+        "aspectRatio": 0.595,
+        "orientation": "portrait",
+        "sharpness": 3.637,
+        "entropy": 7.431,
+        "contrast": 51.798,
+        "subjectCompleteness": 0.6,
+        "qualityScore": 62
+      }
+    },
+    {
+      "id": "derived-subject3-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject3.jpg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "assembled_standing",
+        "label": "Students Assembled",
+        "confidence": 0.86,
+        "evidence": [
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 250,
+        "height": 430,
+        "megapixels": 0.11,
+        "aspectRatio": 0.581,
+        "orientation": "portrait",
+        "sharpness": 3.82,
+        "entropy": 7.512,
+        "contrast": 56.288,
+        "subjectCompleteness": 0.6,
+        "qualityScore": 64
+      }
+    },
+    {
+      "id": "derived-subject4-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject4.jpg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "assembled_standing",
+        "label": "Students Assembled",
+        "confidence": 0.86,
+        "evidence": [
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 260,
+        "height": 450,
+        "megapixels": 0.12,
+        "aspectRatio": 0.578,
+        "orientation": "portrait",
+        "sharpness": 3.969,
+        "entropy": 7.481,
+        "contrast": 60.022,
+        "subjectCompleteness": 0.6,
+        "qualityScore": 65
+      }
+    },
+    {
+      "id": "derived-subject5-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject5.jpg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "assembled_standing",
+        "label": "Students Assembled",
+        "confidence": 0.86,
+        "evidence": [
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 260,
+        "height": 470,
+        "megapixels": 0.12,
+        "aspectRatio": 0.553,
+        "orientation": "portrait",
+        "sharpness": 3.897,
+        "entropy": 7.286,
+        "contrast": 43.749,
+        "subjectCompleteness": 0.6,
+        "qualityScore": 60
+      }
+    },
+    {
+      "id": "derived-subject6-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject6.jpg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "assembled_standing",
+        "label": "Students Assembled",
+        "confidence": 0.86,
+        "evidence": [
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 260,
+        "height": 475,
+        "megapixels": 0.12,
+        "aspectRatio": 0.547,
+        "orientation": "portrait",
+        "sharpness": 3.371,
+        "entropy": 7.258,
+        "contrast": 53.22,
+        "subjectCompleteness": 0.6,
+        "qualityScore": 62
+      }
+    },
+    {
+      "id": "derived-subject7-jpg",
+      "path": "C:\\Users\\ADMIN\\Desktop\\SNHS-PS-AGENT-main\\studio-output-collage2\\crops\\subject7.jpg",
+      "momentId": "E:\\AI AGENTS\\PS AGENT\\ASSETS\\hero.jpeg",
+      "role": {
+        "role": "assembled_standing",
+        "label": "Students Assembled",
+        "confidence": 0.86,
+        "evidence": [
+          "assembled_standing: assembled-standing signal"
+        ]
+      },
+      "technical": {
+        "width": 250,
+        "height": 485,
+        "megapixels": 0.12,
+        "aspectRatio": 0.515,
+        "orientation": "portrait",
+        "sharpness": 2.469,
+        "entropy": 7.22,
+        "contrast": 47.967,
+        "subjectCompleteness": 0.6,
+        "qualityScore": 55
+      }
+    }
+  ]
+}

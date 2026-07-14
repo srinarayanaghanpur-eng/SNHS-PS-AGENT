@@ -19,7 +19,7 @@ export function profileDir(id: string): string { return join(brandKitsRoot(), id
 function indexPath(): string { return join(brandKitsRoot(), 'profiles.json'); }
 function defaultPath(): string { return join(brandKitsRoot(), '_default.json'); }
 
-const SUBFOLDERS = ['logos', 'management', 'campus', 'signatures', 'stamps', 'partners', 'backgrounds'];
+const SUBFOLDERS = ['logos', 'management', 'students', 'campus', 'signatures', 'stamps', 'partners', 'backgrounds'];
 
 async function ensureProfileFolders(id: string): Promise<void> {
   await Promise.all(SUBFOLDERS.map((f) => mkdir(join(profileDir(id), f), { recursive: true })));

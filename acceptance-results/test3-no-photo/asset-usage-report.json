@@ -1,0 +1,14 @@
+{
+  "inputAssetCount": 0,
+  "validAssetCount": 0,
+  "heroImagePath": "",
+  "schoolLogoPath": "",
+  "leadLogoPath": "",
+  "chairmanImagePath": "",
+  "invalidOrMissingAssets": [],
+  "usage": {
+    "used": [],
+    "missing": [],
+    "invalid": []
+  }
+}

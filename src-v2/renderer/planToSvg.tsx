@@ -30,6 +30,9 @@ function Node({ node, gi, ni }: { node: PlanNode; gi: number; ni: number }) {
   if (node.kind === 'ellipse') {
     return <ellipse cx={node.rect.x + node.rect.w / 2} cy={node.rect.y + node.rect.h / 2} rx={node.rect.w / 2} ry={node.rect.h / 2} fill={hex(node.hex)} opacity={(node.opacity ?? 100) / 100} />;
   }
+  if (node.kind === 'polygon') {
+    return <polygon points={node.points.map((point) => `${point.x},${point.y}`).join(' ')} fill={hex(node.hex)} opacity={(node.opacity ?? 100) / 100} />;
+  }
   if (node.kind === 'gradient') {
     return (
       <g>

@@ -42,6 +42,7 @@ const BRAND_COLOR_FIELDS: [string, string][] = [
 const ASSET_GROUPS: { title: string; keys: BrandAssetKey[] }[] = [
   { title: 'Branding', keys: ['mainLogo', 'secondaryLogo', 'leadLogo', 'groupLogo', 'sponsorLogo'] },
   { title: 'Management', keys: ['chairmanPhoto', 'correspondentPhoto', 'directorPhoto', 'principalPhoto', 'headmasterPhoto'] },
+  { title: 'Poster heroes', keys: ['studentPhoto', 'assemblyPhoto'] },
   { title: 'Campus', keys: ['campusPhoto', 'buildingPhoto', 'busPhoto', 'defaultBackground'] },
   { title: 'Documents', keys: ['signature', 'stamp', 'qrCode'] },
 ];

@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { mkdir, readFile, writeFile, stat, rm } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat, rm, readdir } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { existsSync } from 'node:fs';
 import { StoragePaths } from './storage-paths';
@@ -7,10 +7,10 @@ import { validateStorageRoot } from './storage-validator';
 import { estimateMigration, executeMigration } from './storage-migration';
 import type { StorageSettings, StorageUsageSummary, MigrationPlan, MigrationResult, ValidationResult } from './storage-types';
 
-const SETTINGS_FILE = 'settings.json';
-const SETTINGS_SCHEMA_VERSION = 1;
+const SETTINGS_FILE = 'storage-config.json';
+const SETTINGS_SCHEMA_VERSION = 2;
 
-const DEFAULT_ROOT_NAME = 'SNHS Creative Automation Studio';
+const DEFAULT_ROOT = 'E:\\AI AGENTS\\SNHS SMART POSTER AGENT';
 
 export class StorageManager {
   private paths!: StoragePaths;
@@ -26,13 +26,20 @@ export class StorageManager {
 
   private async init(): Promise<void> {
     const saved = await this.loadSettings();
-    if (saved && saved.rootPath) {
+    if (saved && saved.rootPath && existsSync(saved.rootPath.split('\\').slice(0, 2).join('\\') + '\\')) {
       this._rootPath = saved.rootPath;
+    } else if (saved && saved.rootPath) {
+      const drive = saved.rootPath.slice(0, 2);
+      if (/^[A-Za-z]:$/.test(drive) && !existsSync(drive + '\\')) {
+        this._rootPath = DEFAULT_ROOT;
+      } else {
+        this._rootPath = DEFAULT_ROOT;
+      }
     } else {
-      this._rootPath = join(app.getPath('documents'), DEFAULT_ROOT_NAME);
-      await this.saveSettings({ rootPath: this._rootPath });
+      this._rootPath = DEFAULT_ROOT;
     }
     this.paths = new StoragePaths(this._rootPath);
+    await this.saveSettings({ rootPath: this._rootPath });
     await this.ensureDirectories();
   }
 
@@ -85,11 +92,25 @@ export class StorageManager {
 
   // ── Change root ──
 
-  async setStorageRoot(newRoot: string): Promise<void> {
+  async setStorageRoot(newRoot: string, migrateExisting = false): Promise<void> {
     const resolved = resolve(newRoot);
     const paths = new StoragePaths(resolved);
-    const dirs = paths.getAllDirectories();
-    await Promise.all(dirs.map((d) => mkdir(d, { recursive: true })));
+
+    if (migrateExisting && this._rootPath && this._rootPath !== resolved) {
+      const result = await executeMigration(this._rootPath, resolved, 'move');
+      if (!result.success) {
+        const dirs = paths.getAllDirectories();
+        await Promise.all(dirs.map((d) => mkdir(d, { recursive: true })));
+        this._rootPath = resolved;
+        this.paths = paths;
+        await this.saveSettings({ rootPath: resolved });
+        throw new Error(`Partial migration: ${result.filesMigrated} moved, ${result.failedFiles} failed. Check ${result.logPath}`);
+      }
+    } else {
+      const dirs = paths.getAllDirectories();
+      await Promise.all(dirs.map((d) => mkdir(d, { recursive: true })));
+    }
+
     this._rootPath = resolved;
     this.paths = paths;
     await this.saveSettings({ rootPath: resolved });
@@ -117,7 +138,7 @@ export class StorageManager {
       let sizeBytes = 0;
       let fileCount = 0;
       try {
-        const entries = await import('node:fs/promises').then((fs) => fs.readdir(d, { withFileTypes: true }));
+        const entries = await readdir(d, { withFileTypes: true });
         for (const e of entries) {
           if (e.isFile()) {
             fileCount++;
@@ -130,22 +151,40 @@ export class StorageManager {
 
     let cacheSizeBytes = 0;
     let tempSizeBytes = 0;
+    const cacheDirs = [this.paths.getCacheDirectory(), this.paths.getCachePreviewsDirectory(), this.paths.getCacheThumbnailsDirectory(), this.paths.getCacheTemporaryDirectory()];
+    const tempDir = this.paths.getCacheTemporaryDirectory();
     for (const ds of dirStats) {
-      if (ds.path.includes('Cache')) cacheSizeBytes += ds.sizeBytes;
-      if (ds.path.endsWith('Temp')) tempSizeBytes += ds.sizeBytes;
+      if (cacheDirs.some((cd) => ds.path === cd)) cacheSizeBytes += ds.sizeBytes;
+      if (ds.path === tempDir) tempSizeBytes += ds.sizeBytes;
     }
 
     const drive = this._rootPath.slice(0, 2);
     let totalBytes = 0, freeBytes = 0, usedBytes = 0;
     try {
       const { execSync } = require('node:child_process');
-      const result = execSync(`fsutil volume diskfree ${drive}`, { encoding: 'utf8', timeout: 5000 });
-      const totalMatch = result.match(/Total\s+bytes\s+:\s+(\d+)/i);
-      const freeMatch = result.match(/Total\s+free\s+bytes\s+:\s+(\d+)/i);
-      if (totalMatch) totalBytes = parseInt(totalMatch[1], 10);
-      if (freeMatch) freeBytes = parseInt(freeMatch[1], 10);
-      usedBytes = totalBytes - freeBytes;
-    } catch { }
+      const result = execSync(`wmic logicaldisk where "DeviceID='${drive}'" get Size,FreeSpace /format:csv`, { encoding: 'utf8', timeout: 5000 });
+      const lines = result.trim().split('\n').filter((l: string) => l.trim());
+      for (const line of lines) {
+        if (line.includes('Node')) continue;
+        const parts = line.split(',').map((s: string) => s.trim());
+        if (parts.length >= 3 && /^[A-Za-z]:/.test(parts[1])) {
+          freeBytes = parseInt(parts[2], 10) || 0;
+          totalBytes = parseInt(parts[3], 10) || 0;
+          break;
+        }
+      }
+      if (totalBytes > 0) usedBytes = totalBytes - freeBytes;
+    } catch {
+      try {
+        const { execSync } = require('node:child_process');
+        const result = execSync(`fsutil volume diskfree ${drive}`, { encoding: 'utf8', timeout: 5000 });
+        const totalMatch = result.match(/Total\s+bytes\s+:\s+(\d+)/i);
+        const freeMatch = result.match(/Total\s+free\s+bytes\s+:\s+(\d+)/i);
+        if (totalMatch) totalBytes = parseInt(totalMatch[1], 10);
+        if (freeMatch) freeBytes = parseInt(freeMatch[1], 10);
+        usedBytes = totalBytes - freeBytes;
+      } catch { }
+    }
 
     return {
       rootPath: this._rootPath,
@@ -153,43 +192,59 @@ export class StorageManager {
       directories: dirStats,
       cacheSizeBytes,
       tempSizeBytes,
+      directoryCount: dirStats.filter((d) => d.fileCount > 0 || d.sizeBytes > 0).length,
     };
   }
 
   // ── Cache / Temp cleanup ──
 
-  async clearCache(): Promise<number> {
-    return this.clearDirectory(this.paths.getCacheDirectory(), { preserveExtensions: ['.psd', '.png', '.jpg', '.jpeg'] });
+  async clearCache(): Promise<{ filesDeleted: number; bytesRecovered: number }> {
+    const dirs = [this.paths.getCacheDirectory(), this.paths.getCachePreviewsDirectory(), this.paths.getCacheThumbnailsDirectory()];
+    let filesDeleted = 0, bytesRecovered = 0;
+    for (const dir of dirs) {
+      try {
+        const entries = await readdir(dir, { withFileTypes: true });
+        for (const e of entries) {
+          if (!e.isFile()) continue;
+          const ext = e.name.split('.').pop()?.toLowerCase();
+          const preserveExts = ['psd', 'png', 'jpg', 'jpeg'];
+          if (preserveExts.includes(ext || '')) continue;
+          const full = join(dir, e.name);
+          try {
+            const s = await stat(full);
+            bytesRecovered += s.size;
+            await rm(full, { force: true });
+            filesDeleted++;
+          } catch { }
+        }
+      } catch { }
+    }
+    return { filesDeleted, bytesRecovered };
   }
 
-  async clearTemp(): Promise<number> {
-    return this.clearDirectory(this.paths.getTempDirectory(), { preserveAgeMinutes: 60 });
-  }
-
-  private async clearDirectory(
-    dir: string,
-    opts?: { preserveExtensions?: string[]; preserveAgeMinutes?: number },
-  ): Promise<number> {
-    let cleared = 0;
+  async clearTemp(): Promise<{ filesDeleted: number; bytesRecovered: number }> {
+    const dir = this.paths.getCacheTemporaryDirectory();
+    let filesDeleted = 0, bytesRecovered = 0;
     try {
-      const entries = await import('node:fs/promises').then((fs) => fs.readdir(dir, { withFileTypes: true }));
+      const entries = await readdir(dir, { withFileTypes: true });
       const now = Date.now();
       for (const e of entries) {
         if (!e.isFile()) continue;
         const ext = e.name.split('.').pop()?.toLowerCase();
-        if (opts?.preserveExtensions?.includes(`.${ext}`)) continue;
+        const preserveExts = ['psd', 'png', 'jpg', 'jpeg'];
+        if (preserveExts.includes(ext || '')) continue;
         const full = join(dir, e.name);
-        if (opts?.preserveAgeMinutes) {
-          try {
-            const s = await stat(full);
-            const ageMs = now - s.mtimeMs;
-            if (ageMs < opts.preserveAgeMinutes * 60 * 1000) continue;
-          } catch { }
-        }
-        try { await rm(full, { force: true }); cleared++; } catch { }
+        try {
+          const s = await stat(full);
+          const ageMs = now - s.mtimeMs;
+          if (ageMs < 60 * 60 * 1000) continue;
+          bytesRecovered += s.size;
+          await rm(full, { force: true });
+          filesDeleted++;
+        } catch { }
       }
     } catch { }
-    return cleared;
+    return { filesDeleted, bytesRecovered };
   }
 
   // ── Security ──

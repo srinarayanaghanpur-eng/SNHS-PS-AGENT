@@ -84,6 +84,16 @@ let uid = 0;
 function nextId(p) { return `${p}${uid++}`; }
 
 function renderNode(n, defs) {
+  const inner = renderNodeInner(n, defs);
+  if (n.rot) {
+    const cx = (n.x ?? 0) + (n.w ?? 0) / 2;
+    const cy = (n.y ?? 0) + (n.h ?? 0) / 2;
+    return `<g transform="rotate(${n.rot} ${cx} ${cy})">${inner}</g>`;
+  }
+  return inner;
+}
+
+function renderNodeInner(n, defs) {
   switch (n.type) {
     case 'group':
       return n.children.map((c) => renderNode(c, defs)).join('\n');
@@ -114,21 +124,34 @@ function renderNode(n, defs) {
       if (n.shape === 'circle') {
         const cx = n.x + n.w / 2, cy = n.y + n.h / 2, rr = Math.min(n.w, n.h) / 2;
         clip = `<clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${rr}"/></clipPath>`;
+      } else if (n.shape === 'arch') {
+        const r = Math.min(n.w / 2, n.h * 0.5);
+        const p = `M ${n.x} ${n.y + n.h} L ${n.x} ${n.y + r} A ${r} ${r} 0 0 1 ${n.x + r} ${n.y} L ${n.x + n.w - r} ${n.y} A ${r} ${r} 0 0 1 ${n.x + n.w} ${n.y + r} L ${n.x + n.w} ${n.y + n.h} Z`;
+        clip = `<clipPath id="${clipId}"><path d="${p}"/></clipPath>`;
       } else {
         const rx = n.radius || 0;
         clip = `<clipPath id="${clipId}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" ry="${rx}"/></clipPath>`;
       }
       defs.push(clip);
       const href = n.href.startsWith('data:') ? n.href : dataUri(n.href);
-      // cover fit: scale to fill, center-crop via preserveAspectRatio slice
-      const img = `<image x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" href="${href}" preserveAspectRatio="${n.fit === 'contain' ? 'xMidYMid meet' : 'xMidYMid slice'}" clip-path="url(#${clipId})"/>`;
+      const shadow = n.shadow ? ` filter="url(#dropshadow)"` : '';
+      const focusX = n.focusX ?? 0.5, focusY = n.focusY ?? 0.5;
+      const xAnchor = focusX < 0.36 ? 'Min' : focusX > 0.64 ? 'Max' : 'Mid';
+      const yAnchor = focusY < 0.40 ? 'Min' : focusY > 0.60 ? 'Max' : 'Mid';
+      const preserve = n.fit === 'contain' ? 'xMidYMid meet' : `x${xAnchor}Y${yAnchor} slice`;
+      const img = `<image x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" href="${href}" preserveAspectRatio="${preserve}" clip-path="url(#${clipId})"${shadow}/>`;
       let extra = '';
+      const rw = n.ringWidth || 4;
       if (n.ring) {
         if (n.shape === 'circle') {
           const cx = n.x + n.w / 2, cy = n.y + n.h / 2, rr = Math.min(n.w, n.h) / 2;
-          extra = `<circle cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="${n.ring}" stroke-width="${n.ringWidth || 4}"/>`;
+          extra = `<circle cx="${cx}" cy="${cy}" r="${rr - rw / 2}" fill="none" stroke="${n.ring}" stroke-width="${rw}"/>`;
+        } else if (n.shape === 'arch') {
+          const r = Math.min(n.w / 2, n.h * 0.5);
+          const p = `M ${n.x} ${n.y + n.h} L ${n.x} ${n.y + r} A ${r} ${r} 0 0 1 ${n.x + r} ${n.y} L ${n.x + n.w - r} ${n.y} A ${r} ${r} 0 0 1 ${n.x + n.w} ${n.y + r} L ${n.x + n.w} ${n.y + n.h}`;
+          extra = `<path d="${p}" fill="none" stroke="${n.ring}" stroke-width="${rw}"/>`;
         } else {
-          extra = `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.radius || 0}" fill="none" stroke="${n.ring}" stroke-width="${n.ringWidth || 4}"/>`;
+          extra = `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.radius || 0}" fill="none" stroke="${n.ring}" stroke-width="${rw}"/>`;
         }
       }
       return img + extra;
@@ -161,7 +184,7 @@ export function sceneToSvg(scene) {
   uid = 0;
   const defs = [];
   const body = scene.root.map((n) => renderNode(n, defs)).join('\n');
-  const filters = `<filter id="softshadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.28"/></filter>`;
+  const filters = `<filter id="softshadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.28"/></filter><filter id="dropshadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#000" flood-opacity="0.30"/></filter>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${scene.width}" height="${scene.height}" viewBox="0 0 ${scene.width} ${scene.height}"><defs>${filters}${defs.join('')}</defs>${body}</svg>`;
 }
 

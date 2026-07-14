@@ -70,7 +70,7 @@ async function buildV2Files() {
   // 'playwright' is an OPTIONAL dependency (only needed for the visible-browser
   // asset fallback). Mark it external so the bundle builds whether or not it is
   // installed; browser-controller loads it lazily and degrades gracefully.
-  for (const file of ['main.ts','preload.ts']) await build({ entryPoints:[path.join(root,'src-v2','main',file)], outfile:path.join(v2Main,file.replace(/\.ts$/,'.js')), bundle:true, platform:'node', target:'node20', format:'cjs', external:['electron','playwright'], logLevel:'info' });
+  for (const file of ['main.ts','preload.ts']) await build({ entryPoints:[path.join(root,'src-v2','main',file)], outfile:path.join(v2Main,file.replace(/\.ts$/,'.js')), bundle:true, platform:'node', target:'node20', format:'cjs', external:['electron','playwright','sharp','@img/sharp-win32-x64'], logLevel:'info' });
 }
 
 // ─── Main ─────────────────────────────────────────────────────

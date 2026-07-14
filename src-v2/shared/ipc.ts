@@ -51,6 +51,19 @@ export const channels = {
   getStorageUsage: 'v2:get-storage-usage',
   clearCache: 'v2:clear-cache',
   clearTemp: 'v2:clear-temp',
+  // ── Poster Brain (learning system) ──
+  brainApprove: 'v2:brain-approve',
+  brainReject: 'v2:brain-reject',
+  brainCorrect: 'v2:brain-correct',
+  brainCompare: 'v2:brain-compare',
+  brainStats: 'v2:brain-stats',
+  brainListRecords: 'v2:brain-list-records',
+  brainLoadRecord: 'v2:brain-load-record',
+  brainRecordOutput: 'v2:brain-record-output',
+  // ── Recent Edits ──
+  listRecentEdits: 'v2:list-recent-edits',
+  loadJobRecord: 'v2:load-job-record',
+  openFileLocation: 'v2:open-file-location',
   // ── Google Photos connector (additive) ──
   gpStatus: 'v2:gp-status',
   gpConnect: 'v2:gp-connect',
@@ -168,6 +181,14 @@ export const posterRequestSchema = z.object({
   management: z.object({ chairman: managementPersonSchema.optional(), principal: managementPersonSchema.optional() }).optional(),
   // ── pro design engine ──
   useProEngine: z.boolean().optional(),
+  requestedCompositionFamily: z.enum([
+    'fullBleedAssemblyEditorial', 'asymmetricStudentHero', 'editorialPhotoSplit',
+    'layeredPrayerCollage', 'premiumEmblematicAssembly', 'magazineProgrammeLayout',
+  ]).optional(),
+  // The sandboxed renderer sends the exact plan displayed in Preview. The main
+  // process verifies its hash and renders this object without rebuilding it.
+  designPlan: z.unknown().optional(),
+  previewPlanHash: z.string().regex(/^[0-9a-f]{16}$/).optional(),
 }).strict();
 export type PosterRequest = z.infer<typeof posterRequestSchema>;
 export type ManagementPersonRequest = z.infer<typeof managementPersonSchema>;
@@ -187,6 +208,8 @@ export interface PosterGenerationResult {
   success: true; jobId: string; stage: 'completed'; variations: PosterVariationResult[];
   // kept for backward compatibility with the old single-output shape
   psdPath: string; jpgPath?: string; pngPath?: string;
+  designPlanPath?: string; renderLogPath?: string; previewPath?: string; finalPath?: string;
+  renderLog?: Record<string, unknown>;
 }
 export interface PosterProgressEvent { jobId: string; stage: number; label: string; variation?: number }
 

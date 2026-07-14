@@ -10,6 +10,8 @@ vi.mock('electron', () => ({ app: { getPath: () => tempBase, isPackaged: false, 
 vi.mock('../src-v2/main/logger', () => ({ log: () => {}, installCrashHandlers: () => {} }));
 
 import * as store from '../src-v2/main/brandKit/profileStore';
+import { initializeStorage } from '../src-v2/main/storage';
+import { resetStorageManager } from '../src-v2/main/storage/storage-manager';
 
 // A minimal valid PNG (signature + IHDR) so asset import passes validation.
 function writePng(path: string): void {
@@ -18,7 +20,7 @@ function writePng(path: string): void {
   writeFileSync(path, Buffer.from([...sig, ...ihdr, ...Array(200).fill(0)]));
 }
 
-beforeEach(() => { tempBase = mkdtempSync(join(tmpdir(), 'snhs-store-')); });
+beforeEach(async () => { tempBase = mkdtempSync(join(tmpdir(), 'snhs-store-')); resetStorageManager(); await initializeStorage(); });
 afterEach(() => { rmSync(tempBase, { recursive: true, force: true }); });
 
 describe('profile store', () => {

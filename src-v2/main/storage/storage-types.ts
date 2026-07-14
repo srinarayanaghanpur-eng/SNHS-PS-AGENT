@@ -1,32 +1,23 @@
 export const REQUIRED_DIRECTORIES = [
-  'Projects',
-  'Assets/School Logos',
-  'Assets/LEAD Logos',
-  'Assets/Leadership Photos',
-  'Assets/Campus Photos',
-  'Assets/Student Photos',
-  'Assets/Event Photos',
-  'Assets/Decorative Assets',
-  'Photoshop/PSD',
-  'Photoshop/PNG',
-  'Photoshop/JPG',
-  'Photoshop/Templates',
-  'Premiere/Projects',
-  'Premiere/Exports',
-  'Premiere/Media',
-  'Word/DOCX',
-  'Word/PDF',
-  'Word/Templates',
-  'AI Models',
-  'Database',
-  'Cache',
-  'Temp',
-  'Logs',
-  'Backups',
-  'Jobs',
-  'BrandKits',
-  'Config',
-  'Projects/assistant-sessions',
+  'jobs',
+  'outputs',
+  'outputs/psd',
+  'outputs/png',
+  'outputs/jpg',
+  'outputs/pdf',
+  'assets',
+  'cache',
+  'cache/previews',
+  'cache/thumbnails',
+  'cache/temporary',
+  'history',
+  'logs',
+  'backups',
+  'poster-brain',
+  'poster-brain/datasets',
+  'poster-brain/models',
+  'acceptance',
+  'test-runs',
 ] as const;
 
 export interface StorageSettings {
@@ -48,6 +39,7 @@ export interface StorageUsageSummary {
   directories: { path: string; sizeBytes: number; fileCount: number }[];
   cacheSizeBytes: number;
   tempSizeBytes: number;
+  directoryCount: number;
 }
 
 export interface MigrationPlan {

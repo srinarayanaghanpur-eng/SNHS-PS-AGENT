@@ -1,0 +1,9 @@
+{
+  "test": "test3-no-photo",
+  "selectedFamily": "premiumEmblematicAssembly",
+  "requestedFamily": "premiumEmblematicAssembly",
+  "renderer": "immutable-design-plan-jsx",
+  "legacyRendererUsed": false,
+  "planHashesMatch": true,
+  "qualityGateAccepted": true
+}
